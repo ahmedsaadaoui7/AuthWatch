@@ -1,0 +1,5 @@
+timestamp,username,source_ip,result
+2026-08-08T08:00:00,alice,192.168.1.20,success
+2026-08-08T08:02:14,bob,192.168.1.35,failure
+2026-08-08T08:02:40,bob,192.168.1.35,success
+2026-08-08T08:05:10,charlie,192.168.1.42,success
