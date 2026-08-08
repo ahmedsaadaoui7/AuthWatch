@@ -66,3 +66,44 @@ def test_cli_generates_markdown_report(tmp_path):
     assert "Source IP: 10.0.0.50" in content
     assert "Username: admin" in content
     assert "Incident report written to:" in result.stdout
+
+
+def test_cli_missing_file_returns_error():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "data/does_not_exist.csv",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "[ERROR] Authentication log not found:" in result.stderr
+
+
+def test_cli_invalid_log_returns_error(tmp_path):
+    invalid_file = tmp_path / "invalid_auth_log.csv"
+
+    invalid_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "not-a-timestamp,admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(invalid_file),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "[ERROR]" in result.stderr
+    assert "invalid timestamp" in result.stderr

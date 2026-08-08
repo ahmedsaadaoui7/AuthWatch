@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from src.detector import detect_brute_force
 from src.parser import load_auth_events
@@ -26,12 +27,23 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    events = load_auth_events(args.log_file)
+    try:
+        events = load_auth_events(args.log_file)
+    except FileNotFoundError:
+        print(
+            f"[ERROR] Authentication log not found: {args.log_file}",
+            file=sys.stderr,
+        )
+        return 1
+    except ValueError as error:
+        print(f"[ERROR] {error}", file=sys.stderr)
+        return 1
+
     alerts = detect_brute_force(events)
 
     if not alerts:
         print("No suspicious authentication activity detected.")
-        return
+        return 0
 
     for alert in alerts:
         print("\n[ALERT] Potential brute-force activity detected")
@@ -45,5 +57,8 @@ def main():
         report_path = generate_markdown_report(alerts, args.report)
         print(f"\nIncident report written to: {report_path}")
 
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
