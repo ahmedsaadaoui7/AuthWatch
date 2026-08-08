@@ -58,3 +58,120 @@ def test_failures_outside_time_window_do_not_trigger_alert():
     alerts = detect_brute_force(events)
 
     assert alerts == []
+
+
+def test_different_users_are_not_combined():
+    events = [
+        {
+            "timestamp": "2026-08-08T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:10",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:20",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:30",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:40",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    alerts = detect_brute_force(events)
+
+    assert alerts == []
+
+
+def test_different_source_ips_are_not_combined():
+    events = [
+        {
+            "timestamp": "2026-08-08T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:40",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    alerts = detect_brute_force(events)
+
+    assert alerts == []
+
+
+def test_failures_exactly_at_window_boundary_trigger_alert():
+    events = [
+        {
+            "timestamp": "2026-08-08T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:15",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:00:45",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-08T09:01:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    alerts = detect_brute_force(events)
+
+    assert len(alerts) == 1
