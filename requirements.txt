@@ -1,0 +1,2 @@
+# Test dependency
+pytest==9.0.3
