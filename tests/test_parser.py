@@ -22,3 +22,39 @@ def test_missing_required_field(tmp_path):
 
     with pytest.raises(ValueError):
         load_auth_events(invalid_file)
+
+
+def test_empty_required_value_is_rejected(tmp_path):
+    invalid_file = tmp_path / "empty_value.csv"
+
+    invalid_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-08T09:00:00,,10.0.0.50,failure\n"
+    )
+
+    with pytest.raises(ValueError, match="required field 'username' is empty"):
+        load_auth_events(invalid_file)
+
+
+def test_invalid_result_is_rejected(tmp_path):
+    invalid_file = tmp_path / "invalid_result.csv"
+
+    invalid_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-08T09:00:00,admin,10.0.0.50,unknown\n"
+    )
+
+    with pytest.raises(ValueError, match="invalid authentication result"):
+        load_auth_events(invalid_file)
+
+
+def test_invalid_timestamp_is_rejected(tmp_path):
+    invalid_file = tmp_path / "invalid_timestamp.csv"
+
+    invalid_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "not-a-timestamp,admin,10.0.0.50,failure\n"
+    )
+
+    with pytest.raises(ValueError, match="invalid timestamp"):
+        load_auth_events(invalid_file)
