@@ -1,0 +1,6 @@
+timestamp,username,source_ip,result
+2026-08-08T09:00:00,admin,10.0.0.50,failure
+2026-08-08T09:00:12,admin,10.0.0.50,failure
+2026-08-08T09:00:24,admin,10.0.0.50,failure
+2026-08-08T09:00:36,admin,10.0.0.50,failure
+2026-08-08T09:00:48,admin,10.0.0.50,failure
