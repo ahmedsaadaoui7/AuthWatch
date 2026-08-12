@@ -17,13 +17,15 @@ def generate_markdown_report(alerts, output_path):
     for index, alert in enumerate(alerts, start=1):
         lines.extend(
             [
-                f"## Alert {index}: Potential Brute-Force Activity",
+                f"## Alert {index}: {alert['title']}",
                 "",
+                f"- Rule ID: {alert['rule_id']}",
+                f"- Severity: {alert['severity']}",
                 f"- Source IP: {alert['source_ip']}",
                 f"- Username: {alert['username']}",
                 f"- Failed attempts: {alert['failed_attempts']}",
-                f"- First failure: {alert['first_failure']}",
-                f"- Last failure: {alert['last_failure']}",
+                f"- First seen: {alert['first_seen']}",
+                f"- Last seen: {alert['last_seen']}",
                 "",
             ]
         )

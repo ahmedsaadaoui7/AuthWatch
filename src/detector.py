@@ -28,11 +28,14 @@ def detect_brute_force(events, threshold=5, window_seconds=60):
 
         if len(window) >= threshold and key not in alerted_targets:
             alerts.append({
+                "rule_id": "AUTH-BF-001",
+                "title": "Potential Brute-Force Activity",
+                "severity": "high",
                 "source_ip": event["source_ip"],
                 "username": event["username"],
                 "failed_attempts": len(window),
-                "first_failure": window[0].isoformat(),
-                "last_failure": window[-1].isoformat(),
+                "first_seen": window[0].isoformat(),
+                "last_seen": window[-1].isoformat(),
             })
 
             alerted_targets.add(key)

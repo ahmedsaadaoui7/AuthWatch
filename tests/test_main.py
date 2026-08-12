@@ -19,10 +19,12 @@ def test_cli_detects_brute_force():
         check=True,
     )
 
-    assert "[ALERT] Potential brute-force activity detected" in result.stdout
+    assert "[ALERT] Potential Brute-Force Activity" in result.stdout
+    assert "Rule ID: AUTH-BF-001" in result.stdout
+    assert "Severity: high" in result.stdout
     assert "Source IP: 10.0.0.50" in result.stdout
     assert "Username: admin" in result.stdout
-
+    assert "Failed attempts: 5" in result.stdout
 
 def test_cli_reports_normal_activity():
     result = subprocess.run(

@@ -46,12 +46,14 @@ def main():
         return 0
 
     for alert in alerts:
-        print("\n[ALERT] Potential brute-force activity detected")
+        print(f"\n[ALERT] {alert['title']}")
+        print(f"Rule ID: {alert['rule_id']}")
+        print(f"Severity: {alert['severity']}")
         print(f"Source IP: {alert['source_ip']}")
         print(f"Username: {alert['username']}")
         print(f"Failed attempts: {alert['failed_attempts']}")
-        print(f"First failure: {alert['first_failure']}")
-        print(f"Last failure: {alert['last_failure']}")
+        print(f"First seen: {alert['first_seen']}")
+        print(f"Last seen: {alert['last_seen']}")
 
     if args.report:
         report_path = generate_markdown_report(alerts, args.report)
