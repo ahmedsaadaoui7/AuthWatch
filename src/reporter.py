@@ -1,3 +1,4 @@
+from src.formatter import format_alert_details
 from pathlib import Path
 
 
@@ -15,17 +16,20 @@ def generate_markdown_report(alerts, output_path):
     ]
 
     for index, alert in enumerate(alerts, start=1):
-        details = alert["details"]
-
         lines.extend(
             [
                 f"## Alert {index}: {alert['title']}",
                 "",
                 f"- Rule ID: {alert['rule_id']}",
                 f"- Severity: {alert['severity']}",
-                f"- Source IP: {details['source_ip']}",
-                f"- Username: {details['username']}",
-                f"- Failed attempts: {details['failed_attempts']}",
+            ]
+        )
+
+        for line in format_alert_details(alert["details"]):
+            lines.append(f"- {line}")
+
+        lines.extend(
+            [
                 f"- First seen: {alert['first_seen']}",
                 f"- Last seen: {alert['last_seen']}",
                 "",

@@ -1,7 +1,8 @@
 import argparse
 import sys
 
-from src.detector import detect_brute_force
+from src.detector import run_detection_engine
+from src.formatter import format_alert_details
 from src.parser import load_auth_events
 from src.reporter import generate_markdown_report
 
@@ -39,21 +40,20 @@ def main():
         print(f"[ERROR] {error}", file=sys.stderr)
         return 1
 
-    alerts = detect_brute_force(events)
+    alerts = run_detection_engine(events)
 
     if not alerts:
         print("No suspicious authentication activity detected.")
         return 0
 
     for alert in alerts:
-        details = alert["details"]
-
         print(f"\n[ALERT] {alert['title']}")
         print(f"Rule ID: {alert['rule_id']}")
         print(f"Severity: {alert['severity']}")
-        print(f"Source IP: {details['source_ip']}")
-        print(f"Username: {details['username']}")
-        print(f"Failed attempts: {details['failed_attempts']}")
+
+        for line in format_alert_details(alert["details"]):
+            print(line)
+
         print(f"First seen: {alert['first_seen']}")
         print(f"Last seen: {alert['last_seen']}")
 
