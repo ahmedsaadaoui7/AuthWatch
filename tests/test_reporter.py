@@ -7,12 +7,14 @@ def test_generate_markdown_report(tmp_path):
             "rule_id": "AUTH-BF-001",
             "title": "Potential Brute-Force Activity",
             "severity": "high",
-            "source_ip": "10.0.0.50",
-            "username": "admin",
-            "failed_attempts": 5,
             "first_seen": "2026-08-08T09:00:00",
             "last_seen": "2026-08-08T09:00:48",
-        }
+            "details": {
+                "source_ip": "10.0.0.50",
+                "username": "admin",
+                "failed_attempts": 5,
+            },
+	}
     ]
     output_file = tmp_path / "incident_report.md"
 

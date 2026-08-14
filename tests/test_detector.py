@@ -7,10 +7,15 @@ def test_detect_brute_force():
 
     alerts = detect_brute_force(events)
 
+    assert alerts[0]["rule_id"] == "AUTH-BF-001"
+    assert alerts[0]["title"] == "Potential Brute-Force Activity"
+    assert alerts[0]["severity"] == "high"
+    assert alerts[0]["first_seen"] == "2026-08-08T09:00:00"
+    assert alerts[0]["last_seen"] == "2026-08-08T09:00:48"
     assert len(alerts) == 1
-    assert alerts[0]["source_ip"] == "10.0.0.50"
-    assert alerts[0]["username"] == "admin"
-    assert alerts[0]["failed_attempts"] == 5
+    assert alerts[0]["details"]["source_ip"] == "10.0.0.50"
+    assert alerts[0]["details"]["username"] == "admin"
+    assert alerts[0]["details"]["failed_attempts"] == 5
 
 
 def test_normal_activity_does_not_trigger_alert():
