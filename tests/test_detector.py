@@ -1,6 +1,7 @@
 from src.detector import (
     detect_brute_force,
     detect_password_spray,
+    detect_success_after_failures,
     run_detection_engine,
 )
 from src.parser import load_auth_events
@@ -490,3 +491,284 @@ def test_detection_engine_runs_multiple_rules():
 
     assert len(alerts) == 2
     assert rule_ids == {"AUTH-BF-001", "AUTH-PS-001"}
+
+def test_detect_success_after_failures():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-SF-001"
+    assert alerts[0]["title"] == "Successful Login After Repeated Failures"
+    assert alerts[0]["severity"] == "high"
+    assert alerts[0]["details"]["source_ip"] == "10.0.0.50"
+    assert alerts[0]["details"]["username"] == "admin"
+    assert alerts[0]["details"]["failed_attempts"] == 3
+
+def test_success_after_failures_requires_threshold():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+def test_success_after_failures_different_usernames_are_not_combined():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:30",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+
+def test_success_after_failures_different_source_ips_are_not_combined():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.60",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+
+def test_success_after_failures_outside_time_window_do_not_trigger():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:40",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:01:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+def test_success_after_failures_exactly_at_window_boundary_triggers():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:40",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:01:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-SF-001"
+
+def test_success_without_previous_failures_does_not_trigger():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+def test_success_clears_previous_failure_window():
+    events = [
+        {
+            "timestamp": "2026-08-14T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-14T09:00:40",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_success_after_failures(events)
+
+    assert alerts == []
+
+def test_detection_engine_runs_success_after_failures_rule():
+    events = [
+        {
+            "timestamp": "2026-08-15T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-15T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-15T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-15T09:00:30",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = run_detection_engine(events)
+
+    rule_ids = {alert["rule_id"] for alert in alerts}
+
+    assert "AUTH-SF-001" in rule_ids

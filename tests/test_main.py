@@ -181,3 +181,74 @@ def test_cli_generates_password_spray_report(tmp_path):
     assert "Unique accounts: 5" in content
     assert "Usernames: admin, alice, bob, charlie, david" in content
     assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_detects_success_after_failures(tmp_path):
+    input_file = tmp_path / "success_after_failures.csv"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-15T09:00:00,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:10,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:20,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:30,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "main.py", str(input_file)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Successful Login After Repeated Failures" in result.stdout
+    assert "Rule ID: AUTH-SF-001" in result.stdout
+    assert "Severity: high" in result.stdout
+    assert "Source IP: 10.0.0.50" in result.stdout
+    assert "Username: admin" in result.stdout
+    assert "Failed attempts: 3" in result.stdout
+    assert "First seen: 2026-08-15T09:00:00" in result.stdout
+    assert "Last seen: 2026-08-15T09:00:30" in result.stdout
+
+
+def test_cli_generates_success_after_failures_report(tmp_path):
+    input_file = tmp_path / "success_after_failures.csv"
+    output_file = tmp_path / "success_after_failures_report.md"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-15T09:00:00,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:10,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:20,admin,10.0.0.50,failure\n"
+        "2026-08-15T09:00:30,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--report",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    report = output_file.read_text(encoding="utf-8")
+
+    assert "Successful Login After Repeated Failures" in report
+    assert "AUTH-SF-001" in report
+    assert "Severity: high" in report
+    assert "Source IP: 10.0.0.50" in report
+    assert "Username: admin" in report
+    assert "Failed attempts: 3" in report
+    assert "First seen: 2026-08-15T09:00:00" in report
+    assert "Last seen: 2026-08-15T09:00:30" in report
+
+    assert f"Incident report written to: {output_file}" in result.stdout

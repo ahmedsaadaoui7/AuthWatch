@@ -95,12 +95,58 @@ def detect_password_spray(events, threshold=5, window_seconds=60):
 
     return alerts
 
+
+def detect_success_after_failures(events, threshold=3, window_seconds=60):
+    failure_windows = defaultdict(deque)
+    alerts = []
+
+    sorted_events = sorted(
+        events,
+        key=lambda event: datetime.fromisoformat(event["timestamp"])
+    )
+
+    for event in sorted_events:
+        key = (event["source_ip"], event["username"])
+        timestamp = datetime.fromisoformat(event["timestamp"])
+
+        window = failure_windows[key]
+
+        while window and (
+            timestamp - window[0]
+        ).total_seconds() > window_seconds:
+            window.popleft()
+
+        if event["result"] == "failure":
+            window.append(timestamp)
+            continue
+
+        if event["result"] == "success":
+            if len(window) >= threshold:
+                alerts.append({
+                    "rule_id": "AUTH-SF-001",
+                    "title": "Successful Login After Repeated Failures",
+                    "severity": "high",
+                    "first_seen": window[0].isoformat(),
+                    "last_seen": timestamp.isoformat(),
+                    "details": {
+                        "source_ip": event["source_ip"],
+                        "username": event["username"],
+                        "failed_attempts": len(window),
+                    },
+                })
+
+            window.clear()
+
+    return alerts
+
+
 def run_detection_engine(events):
     alerts = []
 
     detectors = (
         detect_brute_force,
         detect_password_spray,
+        detect_success_after_failures,
     )
 
     for detector in detectors:
