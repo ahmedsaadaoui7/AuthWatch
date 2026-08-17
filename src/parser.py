@@ -46,3 +46,12 @@ def load_auth_events(file_path):
             events.append(row)
 
     return events
+
+
+def load_disabled_accounts(file_path):
+    with open(file_path, encoding="utf-8") as account_file:
+        return {
+            line.strip()
+            for line in account_file
+            if line.strip()
+        }

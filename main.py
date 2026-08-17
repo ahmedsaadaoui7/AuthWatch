@@ -3,13 +3,13 @@ import sys
 
 from src.detector import run_detection_engine
 from src.formatter import format_alert_details
-from src.parser import load_auth_events
+from src.parser import load_auth_events, load_disabled_accounts
 from src.reporter import generate_markdown_report
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Analyze authentication logs for potential brute-force activity."
+        description="Analyze authentication logs for suspicious authentication activity."
     )
 
     parser.add_argument(
@@ -20,6 +20,11 @@ def parse_arguments():
     parser.add_argument(
         "--report",
         help="Optional path for the generated Markdown incident report.",
+    )
+
+    parser.add_argument(
+        "--disabled-accounts",
+        help="Path to a file containing disabled account usernames",
     )
 
     return parser.parse_args()
@@ -40,7 +45,25 @@ def main():
         print(f"[ERROR] {error}", file=sys.stderr)
         return 1
 
-    alerts = run_detection_engine(events)
+    disabled_accounts = None
+
+    if args.disabled_accounts:
+        try:
+            disabled_accounts = load_disabled_accounts(
+                args.disabled_accounts
+            )
+        except FileNotFoundError:
+            print(
+                f"[ERROR] Disabled accounts file not found: "
+                f"{args.disabled_accounts}",
+                file=sys.stderr,
+            )
+            return 1
+
+    alerts = run_detection_engine(
+        events,
+        disabled_accounts=disabled_accounts,
+    )
 
     if not alerts:
         print("No suspicious authentication activity detected.")

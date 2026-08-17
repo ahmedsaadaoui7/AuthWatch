@@ -1,6 +1,6 @@
 import pytest
 
-from src.parser import load_auth_events
+from src.parser import load_auth_events, load_disabled_accounts
 
 
 def test_load_auth_events():
@@ -58,3 +58,57 @@ def test_invalid_timestamp_is_rejected(tmp_path):
 
     with pytest.raises(ValueError, match="invalid timestamp"):
         load_auth_events(invalid_file)
+
+
+def test_load_disabled_accounts(tmp_path):
+    input_file = tmp_path / "disabled_accounts.txt"
+
+    input_file.write_text(
+        "old_admin\n"
+        "terminated_user\n",
+        encoding="utf-8",
+    )
+
+    disabled_accounts = load_disabled_accounts(input_file)
+
+    assert disabled_accounts == {
+        "old_admin",
+        "terminated_user",
+    }
+
+
+def test_load_disabled_accounts_ignores_blank_lines(tmp_path):
+    input_file = tmp_path / "disabled_accounts.txt"
+
+    input_file.write_text(
+        "old_admin\n"
+        "\n"
+        "terminated_user\n"
+        "   \n",
+        encoding="utf-8",
+    )
+
+    disabled_accounts = load_disabled_accounts(input_file)
+
+    assert disabled_accounts == {
+        "old_admin",
+        "terminated_user",
+    }
+
+
+def test_load_disabled_accounts_removes_duplicates(tmp_path):
+    input_file = tmp_path / "disabled_accounts.txt"
+
+    input_file.write_text(
+        "old_admin\n"
+        "old_admin\n"
+        "terminated_user\n",
+        encoding="utf-8",
+    )
+
+    disabled_accounts = load_disabled_accounts(input_file)
+
+    assert disabled_accounts == {
+        "old_admin",
+        "terminated_user",
+    }

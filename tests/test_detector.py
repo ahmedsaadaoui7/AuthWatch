@@ -3,6 +3,7 @@ from src.detector import (
     detect_password_spray,
     detect_success_after_failures,
     run_detection_engine,
+    detect_disabled_account_attempts,
 )
 from src.parser import load_auth_events
 
@@ -772,3 +773,189 @@ def test_detection_engine_runs_success_after_failures_rule():
     rule_ids = {alert["rule_id"] for alert in alerts}
 
     assert "AUTH-SF-001" in rule_ids
+
+
+def test_detect_disabled_account_attempt():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    disabled_accounts = {"old_admin"}
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-DA-001"
+    assert alerts[0]["title"] == "Authentication Attempt Against Disabled Account"
+    assert alerts[0]["severity"] == "medium"
+    assert alerts[0]["details"]["source_ip"] == "10.0.0.50"
+    assert alerts[0]["details"]["username"] == "old_admin"
+    assert alerts[0]["details"]["result"] == "failure"
+
+
+def test_active_account_does_not_trigger_disabled_account_alert():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    disabled_accounts = {"old_admin"}
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert alerts == []
+
+
+def test_empty_disabled_account_list_does_not_trigger():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    disabled_accounts = set()
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert alerts == []
+
+
+def test_successful_login_to_disabled_account_triggers_alert():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    disabled_accounts = {"old_admin"}
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-DA-001"
+    assert alerts[0]["details"]["result"] == "success"
+
+
+def test_multiple_disabled_accounts_are_detected():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:00:10",
+            "username": "terminated_user",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+        },
+    ]
+
+    disabled_accounts = {
+        "old_admin",
+        "terminated_user",
+    }
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert len(alerts) == 2
+    assert alerts[0]["details"]["username"] == "old_admin"
+    assert alerts[1]["details"]["username"] == "terminated_user"
+
+
+def test_disabled_and_active_accounts_are_separated():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:00:10",
+            "username": "alice",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:00:20",
+            "username": "terminated_user",
+            "source_ip": "10.0.0.70",
+            "result": "success",
+        },
+    ]
+
+    disabled_accounts = {
+        "old_admin",
+        "terminated_user",
+    }
+
+    alerts = detect_disabled_account_attempts(
+        events,
+        disabled_accounts,
+    )
+
+    assert len(alerts) == 2
+
+    usernames = {
+        alert["details"]["username"]
+        for alert in alerts
+    }
+
+    assert usernames == {
+        "old_admin",
+        "terminated_user",
+    }
+
+
+def test_detection_engine_runs_disabled_account_rule():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "old_admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    disabled_accounts = {"old_admin"}
+
+    alerts = run_detection_engine(
+        events,
+        disabled_accounts=disabled_accounts,
+    )
+
+    rule_ids = {alert["rule_id"] for alert in alerts}
+
+    assert "AUTH-DA-001" in rule_ids

@@ -252,3 +252,115 @@ def test_cli_generates_success_after_failures_report(tmp_path):
     assert "Last seen: 2026-08-15T09:00:30" in report
 
     assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_detects_disabled_account_attempt(tmp_path):
+    input_file = tmp_path / "auth_log.csv"
+    disabled_file = tmp_path / "disabled_accounts.txt"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-17T09:00:00,old_admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    disabled_file.write_text(
+        "old_admin\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--disabled-accounts",
+            str(disabled_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Authentication Attempt Against Disabled Account" in result.stdout
+    assert "Rule ID: AUTH-DA-001" in result.stdout
+    assert "Severity: medium" in result.stdout
+    assert "Source IP: 10.0.0.50" in result.stdout
+    assert "Username: old_admin" in result.stdout
+    assert "Result: failure" in result.stdout
+
+
+def test_cli_generates_disabled_account_report(tmp_path):
+    input_file = tmp_path / "auth_log.csv"
+    disabled_file = tmp_path / "disabled_accounts.txt"
+    output_file = tmp_path / "disabled_account_report.md"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-17T09:00:00,old_admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    disabled_file.write_text(
+        "old_admin\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--disabled-accounts",
+            str(disabled_file),
+            "--report",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    report = output_file.read_text(encoding="utf-8")
+
+    assert "Authentication Attempt Against Disabled Account" in report
+    assert "AUTH-DA-001" in report
+    assert "Severity: medium" in report
+    assert "Source IP: 10.0.0.50" in report
+    assert "Username: old_admin" in report
+    assert "Result: failure" in report
+    assert "First seen: 2026-08-17T09:00:00" in report
+    assert "Last seen: 2026-08-17T09:00:00" in report
+
+    assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_missing_disabled_accounts_file_returns_error(tmp_path):
+    input_file = tmp_path / "auth_log.csv"
+    missing_file = tmp_path / "missing_disabled_accounts.txt"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-17T09:00:00,old_admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--disabled-accounts",
+            str(missing_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert (
+        f"[ERROR] Disabled accounts file not found: {missing_file}"
+        in result.stderr
+    )

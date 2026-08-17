@@ -140,7 +140,30 @@ def detect_success_after_failures(events, threshold=3, window_seconds=60):
     return alerts
 
 
-def run_detection_engine(events):
+def detect_disabled_account_attempts(events, disabled_accounts):
+    alerts = []
+
+    for event in events:
+        if event["username"] not in disabled_accounts:
+            continue
+
+        alerts.append({
+            "rule_id": "AUTH-DA-001",
+            "title": "Authentication Attempt Against Disabled Account",
+            "severity": "medium",
+            "first_seen": event["timestamp"],
+            "last_seen": event["timestamp"],
+            "details": {
+                "source_ip": event["source_ip"],
+                "username": event["username"],
+                "result": event["result"],
+            },
+        })
+
+    return alerts
+
+
+def run_detection_engine(events, disabled_accounts=None):
     alerts = []
 
     detectors = (
@@ -151,5 +174,13 @@ def run_detection_engine(events):
 
     for detector in detectors:
         alerts.extend(detector(events))
+
+    if disabled_accounts is not None:
+        alerts.extend(
+            detect_disabled_account_attempts(
+                events,
+                disabled_accounts,
+            )
+        )
 
     return alerts
