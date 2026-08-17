@@ -1,9 +1,10 @@
 from src.detector import (
     detect_brute_force,
+    detect_disabled_account_attempts,
+    detect_one_ip_many_accounts,
     detect_password_spray,
     detect_success_after_failures,
     run_detection_engine,
-    detect_disabled_account_attempts,
 )
 from src.parser import load_auth_events
 
@@ -490,8 +491,7 @@ def test_detection_engine_runs_multiple_rules():
 
     rule_ids = {alert["rule_id"] for alert in alerts}
 
-    assert len(alerts) == 2
-    assert rule_ids == {"AUTH-BF-001", "AUTH-PS-001"}
+    assert {"AUTH-BF-001", "AUTH-PS-001"}.issubset(rule_ids)
 
 def test_detect_success_after_failures():
     events = [
@@ -959,3 +959,319 @@ def test_detection_engine_runs_disabled_account_rule():
     rule_ids = {alert["rule_id"] for alert in alerts}
 
     assert "AUTH-DA-001" in rule_ids
+
+
+def test_detect_one_ip_many_accounts():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-MA-001"
+    assert alerts[0]["title"] == "One Source IP Accessing Multiple Accounts"
+    assert alerts[0]["severity"] == "medium"
+    assert alerts[0]["details"]["source_ip"] == "10.0.0.50"
+    assert alerts[0]["details"]["unique_accounts"] == 5
+
+
+def test_one_ip_many_accounts_requires_threshold():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert alerts == []
+
+
+def test_one_ip_many_accounts_requires_unique_accounts():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert alerts == []
+
+
+def test_one_ip_many_accounts_different_source_ips_are_not_combined():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "admin",
+            "source_ip": "10.0.0.60",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert alerts == []
+
+
+def test_one_ip_many_accounts_outside_time_window_do_not_trigger():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:06:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:08:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert alerts == []
+
+
+def test_one_ip_many_accounts_exactly_at_window_boundary_triggers():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-17T09:05:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-MA-001"
+
+
+def test_one_ip_many_accounts_successful_logins_count():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = detect_one_ip_many_accounts(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-MA-001"
+    assert alerts[0]["details"]["unique_accounts"] == 5
+
+
+def test_detection_engine_runs_one_ip_many_accounts_rule():
+    events = [
+        {
+            "timestamp": "2026-08-17T09:00:00",
+            "username": "alice",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:01:00",
+            "username": "bob",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:02:00",
+            "username": "charlie",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:03:00",
+            "username": "david",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-17T09:04:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "success",
+        },
+    ]
+
+    alerts = run_detection_engine(events)
+
+    rule_ids = {alert["rule_id"] for alert in alerts}
+
+    assert "AUTH-MA-001" in rule_ids

@@ -364,3 +364,78 @@ def test_cli_missing_disabled_accounts_file_returns_error(tmp_path):
         f"[ERROR] Disabled accounts file not found: {missing_file}"
         in result.stderr
     )
+
+
+def test_cli_detects_one_ip_many_accounts(tmp_path):
+    input_file = tmp_path / "many_accounts.csv"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-17T09:00:00,alice,10.0.0.50,success\n"
+        "2026-08-17T09:01:00,bob,10.0.0.50,success\n"
+        "2026-08-17T09:02:00,charlie,10.0.0.50,success\n"
+        "2026-08-17T09:03:00,david,10.0.0.50,success\n"
+        "2026-08-17T09:04:00,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "One Source IP Accessing Multiple Accounts" in result.stdout
+    assert "Rule ID: AUTH-MA-001" in result.stdout
+    assert "Severity: medium" in result.stdout
+    assert "Source IP: 10.0.0.50" in result.stdout
+    assert "Unique accounts: 5" in result.stdout
+    assert "Usernames: admin, alice, bob, charlie, david" in result.stdout
+
+
+def test_cli_generates_one_ip_many_accounts_report(tmp_path):
+    input_file = tmp_path / "many_accounts.csv"
+    output_file = tmp_path / "many_accounts_report.md"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-17T09:00:00,alice,10.0.0.50,success\n"
+        "2026-08-17T09:01:00,bob,10.0.0.50,success\n"
+        "2026-08-17T09:02:00,charlie,10.0.0.50,success\n"
+        "2026-08-17T09:03:00,david,10.0.0.50,success\n"
+        "2026-08-17T09:04:00,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--report",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    report = output_file.read_text(encoding="utf-8")
+
+    assert "One Source IP Accessing Multiple Accounts" in report
+    assert "AUTH-MA-001" in report
+    assert "Severity: medium" in report
+    assert "Source IP: 10.0.0.50" in report
+    assert "Unique accounts: 5" in report
+    assert "Usernames: admin, alice, bob, charlie, david" in report
+    assert "First seen: 2026-08-17T09:00:00" in report
+    assert "Last seen: 2026-08-17T09:04:00" in report
+
+    assert f"Incident report written to: {output_file}" in result.stdout
