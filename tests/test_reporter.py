@@ -28,6 +28,9 @@ def test_generate_markdown_report(tmp_path):
 
     content = output_file.read_text(encoding="utf-8")
 
+    assert "Total alerts: 1" in content
+    assert "High severity: 1" in content
+    assert "Medium severity: 0" in content
     assert "## Alert 1: Potential Brute-Force Activity" in content
     assert "Rule ID: AUTH-BF-001" in content
     assert "Severity: high" in content
@@ -79,3 +82,42 @@ def test_generate_json_report(tmp_path):
     assert alert["details"]["source_ip"] == "10.0.0.50"
     assert alert["details"]["username"] == "admin"
     assert alert["details"]["failed_attempts"] == 5
+
+
+def test_markdown_report_counts_severities(tmp_path):
+    alerts = [
+        {
+            "rule_id": "AUTH-BF-001",
+            "title": "Potential Brute-Force Activity",
+            "severity": "high",
+            "first_seen": "2026-08-08T09:00:00",
+            "last_seen": "2026-08-08T09:00:48",
+            "details": {},
+        },
+        {
+            "rule_id": "AUTH-DA-001",
+            "title": "Authentication Attempt Against Disabled Account",
+            "severity": "medium",
+            "first_seen": "2026-08-08T10:00:00",
+            "last_seen": "2026-08-08T10:00:00",
+            "details": {},
+        },
+        {
+            "rule_id": "AUTH-PS-001",
+            "title": "Potential Password Spraying Activity",
+            "severity": "high",
+            "first_seen": "2026-08-08T11:00:00",
+            "last_seen": "2026-08-08T11:00:40",
+            "details": {},
+        },
+    ]
+
+    output_file = tmp_path / "incident_report.md"
+
+    generate_markdown_report(alerts, output_file)
+
+    content = output_file.read_text(encoding="utf-8")
+
+    assert "Total alerts: 3" in content
+    assert "High severity: 2" in content
+    assert "Medium severity: 1" in content

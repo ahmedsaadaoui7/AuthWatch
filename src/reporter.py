@@ -8,12 +8,24 @@ def generate_markdown_report(alerts, output_path):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    high_severity_count = sum(
+        1 for alert in alerts
+        if alert["severity"] == "high"
+    )
+
+    medium_severity_count = sum(
+        1 for alert in alerts
+        if alert["severity"] == "medium"
+    )
+
     lines = [
         "# AuthWatch Incident Report",
         "",
         "## Detection Summary",
         "",
-        f"Total alerts: {len(alerts)}",
+        f"- Total alerts: {len(alerts)}",
+        f"- High severity: {high_severity_count}",
+        f"- Medium severity: {medium_severity_count}",
         "",
     ]
 
