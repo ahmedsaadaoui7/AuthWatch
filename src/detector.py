@@ -214,6 +214,57 @@ def detect_one_ip_many_accounts(events, threshold=5, window_seconds=300):
     return alerts
 
 
+def detect_many_ips_one_account(events, threshold=5, window_seconds=300):
+    ip_windows = defaultdict(deque)
+    alerts = []
+
+    sorted_events = sorted(
+        events,
+        key=lambda event: datetime.fromisoformat(event["timestamp"])
+    )
+
+    alerted_accounts = set()
+
+    for event in sorted_events:
+        username = event["username"]
+        timestamp = datetime.fromisoformat(event["timestamp"])
+        source_ip = event["source_ip"]
+
+        window = ip_windows[username]
+        window.append((timestamp, source_ip))
+
+        while (
+            timestamp - window[0][0]
+        ).total_seconds() > window_seconds:
+            window.popleft()
+
+        unique_source_ips = {
+            stored_ip
+            for _, stored_ip in window
+        }
+
+        if (
+            len(unique_source_ips) >= threshold
+            and username not in alerted_accounts
+        ):
+            alerts.append({
+                "rule_id": "AUTH-MI-001",
+                "title": "One Account Accessed From Multiple Source IPs",
+                "severity": "medium",
+                "first_seen": window[0][0].isoformat(),
+                "last_seen": window[-1][0].isoformat(),
+                "details": {
+                    "username": username,
+                    "unique_source_ips": len(unique_source_ips),
+                    "source_ips": sorted(unique_source_ips),
+                },
+            })
+
+            alerted_accounts.add(username)
+
+    return alerts
+
+
 def run_detection_engine(events, disabled_accounts=None):
     alerts = []
 
@@ -222,6 +273,7 @@ def run_detection_engine(events, disabled_accounts=None):
         detect_password_spray,
         detect_success_after_failures,
         detect_one_ip_many_accounts,
+        detect_many_ips_one_account,
     )
 
     for detector in detectors:

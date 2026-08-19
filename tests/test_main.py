@@ -439,3 +439,86 @@ def test_cli_generates_one_ip_many_accounts_report(tmp_path):
     assert "Last seen: 2026-08-17T09:04:00" in report
 
     assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_detects_many_ips_one_account(tmp_path):
+    input_file = tmp_path / "many_ips.csv"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.10,success\n"
+        "2026-08-19T09:01:00,admin,10.0.0.20,success\n"
+        "2026-08-19T09:02:00,admin,10.0.0.30,success\n"
+        "2026-08-19T09:03:00,admin,10.0.0.40,success\n"
+        "2026-08-19T09:04:00,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "One Account Accessed From Multiple Source IPs" in result.stdout
+    assert "Rule ID: AUTH-MI-001" in result.stdout
+    assert "Severity: medium" in result.stdout
+    assert "Username: admin" in result.stdout
+    assert "Unique source IPs: 5" in result.stdout
+    assert (
+        "Source IPs: 10.0.0.10, 10.0.0.20, 10.0.0.30, "
+        "10.0.0.40, 10.0.0.50"
+        in result.stdout
+    )
+
+
+def test_cli_generates_many_ips_one_account_report(tmp_path):
+    input_file = tmp_path / "many_ips.csv"
+    output_file = tmp_path / "many_ips_report.md"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.10,success\n"
+        "2026-08-19T09:01:00,admin,10.0.0.20,success\n"
+        "2026-08-19T09:02:00,admin,10.0.0.30,success\n"
+        "2026-08-19T09:03:00,admin,10.0.0.40,success\n"
+        "2026-08-19T09:04:00,admin,10.0.0.50,success\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--report",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    report = output_file.read_text(encoding="utf-8")
+
+    assert "One Account Accessed From Multiple Source IPs" in report
+    assert "AUTH-MI-001" in report
+    assert "Severity: medium" in report
+    assert "Username: admin" in report
+    assert "Unique source IPs: 5" in report
+    assert (
+        "Source IPs: 10.0.0.10, 10.0.0.20, 10.0.0.30, "
+        "10.0.0.40, 10.0.0.50"
+        in report
+    )
+    assert "First seen: 2026-08-19T09:00:00" in report
+    assert "Last seen: 2026-08-19T09:04:00" in report
+
+    assert f"Incident report written to: {output_file}" in result.stdout

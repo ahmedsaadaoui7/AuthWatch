@@ -6,6 +6,10 @@ def format_alert_details(details):
 
         if key == "source_ip":
             label = "Source IP"
+        elif key == "source_ips":
+            label = "Source IPs"
+        elif key == "unique_source_ips":
+            label = "Unique source IPs"
 
         if isinstance(value, list):
             value = ", ".join(str(item) for item in value)

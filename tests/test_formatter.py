@@ -31,3 +31,27 @@ def test_format_password_spray_details():
         "Unique accounts: 5",
         "Usernames: admin, alice, bob, charlie, david",
     ]
+
+
+def test_format_many_ips_one_account_details():
+    details = {
+        "username": "admin",
+        "unique_source_ips": 5,
+        "source_ips": [
+            "10.0.0.10",
+            "10.0.0.20",
+            "10.0.0.30",
+            "10.0.0.40",
+            "10.0.0.50",
+        ],
+    }
+
+    lines = format_alert_details(details)
+
+    assert "Username: admin" in lines
+    assert "Unique source IPs: 5" in lines
+    assert (
+        "Source IPs: 10.0.0.10, 10.0.0.20, 10.0.0.30, "
+        "10.0.0.40, 10.0.0.50"
+        in lines
+    )
