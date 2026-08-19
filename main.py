@@ -15,7 +15,7 @@ def parse_arguments():
 
     parser.add_argument(
         "log_file",
-        help="Path to the authentication CSV log file.",
+        help="Path to the authentication CSV or JSON log file.",
     )
 
     parser.add_argument(
@@ -48,7 +48,10 @@ def main():
         )
         return 1
     except ValueError as error:
-        print(f"[ERROR] {error}", file=sys.stderr)
+        print(
+            f"[ERROR] Invalid authentication log: {error}",
+            file=sys.stderr,
+        )
         return 1
 
     disabled_accounts = None

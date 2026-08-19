@@ -667,3 +667,179 @@ def test_cli_malformed_detection_config_returns_error(tmp_path):
 
     assert result.returncode == 1
     assert "[ERROR] Invalid detection configuration:" in result.stderr
+
+
+def test_cli_detects_brute_force_from_json(tmp_path):
+    input_file = tmp_path / "auth.json"
+
+    input_file.write_text(
+        """
+[
+    {
+        "timestamp": "2026-08-19T09:00:00",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:10",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:20",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:30",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:40",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    }
+]
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Potential Brute-Force Activity" in result.stdout
+    assert "Rule ID: AUTH-BF-001" in result.stdout
+
+
+def test_cli_generates_report_from_json(tmp_path):
+    input_file = tmp_path / "auth.json"
+    output_file = tmp_path / "json_report.md"
+
+    input_file.write_text(
+        """
+[
+    {
+        "timestamp": "2026-08-19T09:00:00",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:10",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:20",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:30",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    },
+    {
+        "timestamp": "2026-08-19T09:00:40",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure"
+    }
+]
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--report",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    report = output_file.read_text(encoding="utf-8")
+
+    assert "Potential Brute-Force Activity" in report
+    assert "AUTH-BF-001" in report
+    assert "Source IP: 10.0.0.50" in report
+    assert "Username: admin" in report
+
+    assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_malformed_json_log_returns_error(tmp_path):
+    input_file = tmp_path / "auth.json"
+
+    input_file.write_text(
+        """
+[
+    {
+        "timestamp": "2026-08-19T09:00:00",
+        "username": "admin"
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "[ERROR] Invalid authentication log:" in result.stderr
+
+
+def test_cli_rejects_unsupported_log_format(tmp_path):
+    input_file = tmp_path / "auth.txt"
+
+    input_file.write_text(
+        "unsupported log format",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert (
+        "[ERROR] Invalid authentication log: "
+        "Unsupported authentication log format: expected .csv or .json"
+        in result.stderr
+    )

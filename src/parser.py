@@ -1,4 +1,5 @@
 import csv
+import json
 from datetime import datetime
 
 
@@ -10,9 +11,10 @@ def validate_event(event, row_number):
     for field in REQUIRED_FIELDS:
         value = event.get(field)
 
-        if value is None or not value.strip():
+        if not isinstance(value, str) or not value.strip():
             raise ValueError(
-                f"Row {row_number}: required field '{field}' is empty"
+                f"Row {row_number}: required field '{field}' "
+                "must be a non-empty string"
             )
 
     if event["result"] not in VALID_RESULTS:
@@ -30,7 +32,7 @@ def validate_event(event, row_number):
         ) from error
 
 
-def load_auth_events(file_path):
+def load_csv_auth_events(file_path):
     events = []
 
     with open(file_path, newline="", encoding="utf-8") as csv_file:
@@ -46,6 +48,43 @@ def load_auth_events(file_path):
             events.append(row)
 
     return events
+
+
+def load_json_auth_events(file_path):
+    events = []
+
+    with open(file_path, encoding="utf-8") as json_file:
+        data = json.load(json_file)
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "JSON authentication log must be a list"
+        )
+
+    for row_number, event in enumerate(data, start=1):
+        if not isinstance(event, dict):
+            raise ValueError(
+                "JSON authentication event must be an object"
+            )
+
+        validate_event(event, row_number)
+        events.append(event)
+
+    return events
+
+
+def load_auth_events(file_path):
+    file_path_string = str(file_path).lower()
+
+    if file_path_string.endswith(".json"):
+        return load_json_auth_events(file_path)
+
+    if file_path_string.endswith(".csv"):
+        return load_csv_auth_events(file_path)
+
+    raise ValueError(
+        "Unsupported authentication log format: expected .csv or .json"
+    )
 
 
 def load_disabled_accounts(file_path):
