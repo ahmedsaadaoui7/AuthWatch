@@ -5,7 +5,7 @@ from src.config import load_detection_config
 from src.detector import run_detection_engine
 from src.formatter import format_alert_details
 from src.parser import load_auth_events, load_disabled_accounts
-from src.reporter import generate_markdown_report
+from src.reporter import generate_json_report, generate_markdown_report
 
 
 def parse_arguments():
@@ -31,6 +31,11 @@ def parse_arguments():
     parser.add_argument(
         "--config",
         help="Path to a JSON detection configuration file",
+    )
+
+    parser.add_argument(
+        "--json-output",
+        help="Optional path for the generated JSON alert output.",
     )
 
     return parser.parse_args()
@@ -95,6 +100,11 @@ def main():
 
     if not alerts:
         print("No suspicious authentication activity detected.")
+
+        if args.json_output:
+            json_path = generate_json_report(alerts, args.json_output)
+            print(f"\nJSON alert output written to: {json_path}")
+
         return 0
 
     for alert in alerts:
@@ -111,6 +121,10 @@ def main():
     if args.report:
         report_path = generate_markdown_report(alerts, args.report)
         print(f"\nIncident report written to: {report_path}")
+
+    if args.json_output:
+        json_path = generate_json_report(alerts, args.json_output)
+        print(f"\nJSON alert output written to: {json_path}")
 
     return 0
 

@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -843,3 +844,126 @@ def test_cli_rejects_unsupported_log_format(tmp_path):
         "Unsupported authentication log format: expected .csv or .json"
         in result.stderr
     )
+
+
+def test_cli_generates_json_output(tmp_path):
+    input_file = "data/brute_force_auth_log.csv"
+    output_file = tmp_path / "alerts.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            input_file,
+            "--json-output",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    content = json.loads(
+        output_file.read_text(encoding="utf-8")
+    )
+
+    assert content["total_alerts"] == 1
+    assert len(content["alerts"]) == 1
+
+    alert = content["alerts"][0]
+
+    assert alert["rule_id"] == "AUTH-BF-001"
+    assert alert["severity"] == "high"
+    assert alert["details"]["source_ip"] == "10.0.0.50"
+    assert alert["details"]["username"] == "admin"
+    assert alert["details"]["failed_attempts"] == 5
+    assert f"JSON alert output written to: {output_file}" in result.stdout
+
+
+def test_cli_generates_empty_json_output_when_no_alerts(tmp_path):
+    input_file = "data/normal_auth_log.csv"
+    output_file = tmp_path / "alerts.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            input_file,
+            "--json-output",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    content = json.loads(
+        output_file.read_text(encoding="utf-8")
+    )
+
+    assert content["total_alerts"] == 0
+    assert content["alerts"] == []
+
+
+def test_cli_generates_markdown_and_json_outputs_together(tmp_path):
+    input_file = "data/brute_force_auth_log.csv"
+    markdown_file = tmp_path / "incident.md"
+    json_file = tmp_path / "alerts.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            input_file,
+            "--report",
+            str(markdown_file),
+            "--json-output",
+            str(json_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert markdown_file.exists()
+    assert json_file.exists()
+
+    assert (
+        f"Incident report written to: {markdown_file}"
+        in result.stdout
+    )
+    assert (
+        f"JSON alert output written to: {json_file}"
+        in result.stdout
+    )
+
+
+def test_cli_accepts_json_input_and_generates_json_output(tmp_path):
+    input_file = "data/brute_force_auth_log.json"
+    output_file = tmp_path / "alerts.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            input_file,
+            "--json-output",
+            str(output_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert output_file.exists()
+
+    content = json.loads(
+        output_file.read_text(encoding="utf-8")
+    )
+
+    assert content["total_alerts"] == 1
+    assert content["alerts"][0]["rule_id"] == "AUTH-BF-001"

@@ -1,5 +1,7 @@
-from src.formatter import format_alert_details
+import json
 from pathlib import Path
+
+from src.formatter import format_alert_details
 
 
 def generate_markdown_report(alerts, output_path):
@@ -37,5 +39,22 @@ def generate_markdown_report(alerts, output_path):
         )
 
     output_path.write_text("\n".join(lines), encoding="utf-8")
+
+    return output_path
+
+
+def generate_json_report(alerts, output_path):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    report = {
+        "total_alerts": len(alerts),
+        "alerts": alerts,
+    }
+
+    output_path.write_text(
+        json.dumps(report, indent=4) + "\n",
+        encoding="utf-8",
+    )
 
     return output_path
