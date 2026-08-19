@@ -522,3 +522,148 @@ def test_cli_generates_many_ips_one_account_report(tmp_path):
     assert "Last seen: 2026-08-19T09:04:00" in report
 
     assert f"Incident report written to: {output_file}" in result.stdout
+
+
+def test_cli_uses_custom_detection_config(tmp_path):
+    input_file = tmp_path / "auth.csv"
+    config_file = tmp_path / "config.json"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.50,failure\n"
+        "2026-08-19T09:00:10,admin,10.0.0.50,failure\n"
+        "2026-08-19T09:00:20,admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    config_file.write_text(
+        """
+{
+    "AUTH-BF-001": {
+        "threshold": 3
+    }
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--config",
+            str(config_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Potential Brute-Force Activity" in result.stdout
+    assert "Rule ID: AUTH-BF-001" in result.stdout
+
+
+def test_cli_missing_config_file_returns_error(tmp_path):
+    input_file = tmp_path / "auth.csv"
+    missing_config = tmp_path / "missing_config.json"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--config",
+            str(missing_config),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert (
+        f"[ERROR] Configuration file not found: {missing_config}"
+        in result.stderr
+    )
+
+
+def test_cli_invalid_detection_config_returns_error(tmp_path):
+    input_file = tmp_path / "auth.csv"
+    config_file = tmp_path / "config.json"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    config_file.write_text(
+        """
+{
+    "AUTH-UNKNOWN-001": {
+        "threshold": 3
+    }
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--config",
+            str(config_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert (
+        "[ERROR] Invalid detection configuration: "
+        "Unknown rule ID: AUTH-UNKNOWN-001"
+        in result.stderr
+    )
+
+
+def test_cli_malformed_detection_config_returns_error(tmp_path):
+    input_file = tmp_path / "auth.csv"
+    config_file = tmp_path / "config.json"
+
+    input_file.write_text(
+        "timestamp,username,source_ip,result\n"
+        "2026-08-19T09:00:00,admin,10.0.0.50,failure\n",
+        encoding="utf-8",
+    )
+
+    config_file.write_text(
+        """
+{
+    "AUTH-BF-001": {
+        "threshold": 3
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            str(input_file),
+            "--config",
+            str(config_file),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+    assert "[ERROR] Invalid detection configuration:" in result.stderr

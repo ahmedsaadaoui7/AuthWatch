@@ -1592,3 +1592,91 @@ def test_detection_engine_runs_many_ips_one_account_rule():
     rule_ids = {alert["rule_id"] for alert in alerts}
 
     assert "AUTH-MI-001" in rule_ids
+
+
+def test_detection_engine_uses_custom_brute_force_config():
+    events = [
+        {
+            "timestamp": "2026-08-19T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:00:10",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    config = {
+        "AUTH-BF-001": {
+            "threshold": 3,
+        }
+    }
+
+    alerts = run_detection_engine(
+        events,
+        config=config,
+    )
+
+    rule_ids = {alert["rule_id"] for alert in alerts}
+
+    assert "AUTH-BF-001" in rule_ids
+
+
+def test_detection_engine_uses_custom_brute_force_window():
+    events = [
+        {
+            "timestamp": "2026-08-19T09:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:00:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:00:40",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:01:00",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-19T09:01:20",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    config = {
+        "AUTH-BF-001": {
+            "window_seconds": 120,
+        }
+    }
+
+    alerts = run_detection_engine(
+        events,
+        config=config,
+    )
+
+    rule_ids = {alert["rule_id"] for alert in alerts}
+
+    assert "AUTH-BF-001" in rule_ids

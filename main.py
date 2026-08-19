@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+from src.config import load_detection_config
 from src.detector import run_detection_engine
 from src.formatter import format_alert_details
 from src.parser import load_auth_events, load_disabled_accounts
@@ -25,6 +26,11 @@ def parse_arguments():
     parser.add_argument(
         "--disabled-accounts",
         help="Path to a file containing disabled account usernames",
+    )
+
+    parser.add_argument(
+        "--config",
+        help="Path to a JSON detection configuration file",
     )
 
     return parser.parse_args()
@@ -60,9 +66,28 @@ def main():
             )
             return 1
 
+    detection_config = None
+
+    if args.config:
+        try:
+            detection_config = load_detection_config(args.config)
+        except FileNotFoundError:
+            print(
+                f"[ERROR] Configuration file not found: {args.config}",
+                file=sys.stderr,
+            )
+            return 1
+        except ValueError as error:
+            print(
+                f"[ERROR] Invalid detection configuration: {error}",
+                file=sys.stderr,
+            )
+            return 1
+
     alerts = run_detection_engine(
         events,
         disabled_accounts=disabled_accounts,
+        config=detection_config,
     )
 
     if not alerts:

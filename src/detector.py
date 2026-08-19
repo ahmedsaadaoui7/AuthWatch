@@ -1,8 +1,14 @@
 from collections import defaultdict, deque
 from datetime import datetime
 
+from src.config import DEFAULT_DETECTION_CONFIG
 
-def detect_brute_force(events, threshold=5, window_seconds=60):
+
+def detect_brute_force(
+    events,
+    threshold=DEFAULT_DETECTION_CONFIG["AUTH-BF-001"]["threshold"],
+    window_seconds=DEFAULT_DETECTION_CONFIG["AUTH-BF-001"]["window_seconds"],
+):
     failure_windows = defaultdict(deque)
     alerts = []
 
@@ -44,7 +50,11 @@ def detect_brute_force(events, threshold=5, window_seconds=60):
 
     return alerts
 
-def detect_password_spray(events, threshold=5, window_seconds=60):
+def detect_password_spray(
+    events,
+    threshold=DEFAULT_DETECTION_CONFIG["AUTH-PS-001"]["threshold"],
+    window_seconds=DEFAULT_DETECTION_CONFIG["AUTH-PS-001"]["window_seconds"],
+):
     spray_windows = defaultdict(deque)
     alerts = []
 
@@ -96,7 +106,11 @@ def detect_password_spray(events, threshold=5, window_seconds=60):
     return alerts
 
 
-def detect_success_after_failures(events, threshold=3, window_seconds=60):
+def detect_success_after_failures(
+    events,
+    threshold=DEFAULT_DETECTION_CONFIG["AUTH-SF-001"]["threshold"],
+    window_seconds=DEFAULT_DETECTION_CONFIG["AUTH-SF-001"]["window_seconds"],
+):
     failure_windows = defaultdict(deque)
     alerts = []
 
@@ -163,7 +177,11 @@ def detect_disabled_account_attempts(events, disabled_accounts):
     return alerts
 
 
-def detect_one_ip_many_accounts(events, threshold=5, window_seconds=300):
+def detect_one_ip_many_accounts(
+    events,
+    threshold=DEFAULT_DETECTION_CONFIG["AUTH-MA-001"]["threshold"],
+    window_seconds=DEFAULT_DETECTION_CONFIG["AUTH-MA-001"]["window_seconds"],
+):
     account_windows = defaultdict(deque)
     alerts = []
 
@@ -214,7 +232,11 @@ def detect_one_ip_many_accounts(events, threshold=5, window_seconds=300):
     return alerts
 
 
-def detect_many_ips_one_account(events, threshold=5, window_seconds=300):
+def detect_many_ips_one_account(
+    events,
+    threshold=DEFAULT_DETECTION_CONFIG["AUTH-MI-001"]["threshold"],
+    window_seconds=DEFAULT_DETECTION_CONFIG["AUTH-MI-001"]["window_seconds"],
+):
     ip_windows = defaultdict(deque)
     alerts = []
 
@@ -265,19 +287,30 @@ def detect_many_ips_one_account(events, threshold=5, window_seconds=300):
     return alerts
 
 
-def run_detection_engine(events, disabled_accounts=None):
+def run_detection_engine(events, disabled_accounts=None, config=None):
     alerts = []
 
+    if config is None:
+        config = {}
+
     detectors = (
-        detect_brute_force,
-        detect_password_spray,
-        detect_success_after_failures,
-        detect_one_ip_many_accounts,
-        detect_many_ips_one_account,
+        ("AUTH-BF-001", detect_brute_force),
+        ("AUTH-PS-001", detect_password_spray),
+        ("AUTH-SF-001", detect_success_after_failures),
+        ("AUTH-MA-001", detect_one_ip_many_accounts),
+        ("AUTH-MI-001", detect_many_ips_one_account),
     )
 
-    for detector in detectors:
-        alerts.extend(detector(events))
+    for rule_id, detector in detectors:
+        rule_config = DEFAULT_DETECTION_CONFIG[rule_id].copy()
+        rule_config.update(config.get(rule_id, {}))
+
+        alerts.extend(
+            detector(
+                events,
+                **rule_config,
+            )
+        )
 
     if disabled_accounts is not None:
         alerts.extend(
