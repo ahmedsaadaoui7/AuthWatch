@@ -2,7 +2,7 @@
 
 All notable changes to AuthWatch are documented in this file.
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-08-19
 
 ### Added
 
