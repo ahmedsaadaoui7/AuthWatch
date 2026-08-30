@@ -1,6 +1,7 @@
 import pytest
 from src.normalizer import (
     normalize_linux_auth_event,
+    normalize_linux_timestamp,
     normalize_sysmon_event,
     normalize_windows_security_event,
 )
@@ -245,7 +246,11 @@ def test_normalize_linux_authentication_success():
         "result": "success",
     }
 
-    normalized = normalize_linux_auth_event(event)
+    normalized = normalize_linux_auth_event(
+        event,
+        year=2026,
+        utc_offset="+01:00",
+    )
 
     assert normalized["source"] == "linux_auth"
     assert normalized["event_type"] == "authentication_success"
@@ -272,7 +277,11 @@ def test_normalize_linux_authentication_failure():
         "result": "failure",
     }
 
-    normalized = normalize_linux_auth_event(event)
+    normalized = normalize_linux_auth_event(
+        event,
+        year=2026,
+        utc_offset="+01:00",
+    )
 
     assert normalized["event_type"] == "authentication_failure"
     assert normalized["username"] == "administrator"
@@ -296,7 +305,11 @@ def test_normalize_linux_sudo_execution():
         "result": "success",
     }
 
-    normalized = normalize_linux_auth_event(event)
+    normalized = normalize_linux_auth_event(
+        event,
+        year=2026,
+        utc_offset="+01:00",
+    )
 
     assert normalized["event_type"] == "sudo_execution"
     assert normalized["username"] == "hawk"
@@ -318,8 +331,11 @@ def test_normalize_linux_session_open():
         "opened_by_uid": "0",
     }
 
-    normalized = normalize_linux_auth_event(event)
-
+    normalized = normalize_linux_auth_event(
+        event,
+        year=2026,
+        utc_offset="+01:00",
+    )
     assert normalized["event_type"] == "session_activity"
     assert normalized["username"] == "hawk"
     assert normalized["details"]["session_action"] == "opened"
@@ -337,8 +353,11 @@ def test_normalize_linux_session_close():
         "username": "hawk",
     }
 
-    normalized = normalize_linux_auth_event(event)
-
+    normalized = normalize_linux_auth_event(
+        event,
+        year=2026,
+        utc_offset="+01:00",
+    )
     assert normalized["event_type"] == "session_activity"
     assert normalized["details"]["session_action"] == "closed"
     assert normalized["details"]["service"] == "sshd"
@@ -371,4 +390,26 @@ def test_unsupported_linux_event_raises_error():
     }
 
     with pytest.raises(ValueError):
-        normalize_linux_auth_event(event)
+        normalize_linux_auth_event(
+            event,
+            year=2026,
+            utc_offset="+01:00",
+        )
+
+
+def test_invalid_linux_timestamp_raises_error():
+    with pytest.raises(ValueError):
+        normalize_linux_timestamp(
+            "not-a-timestamp",
+            year=2026,
+            utc_offset="+01:00",
+        )
+
+
+def test_invalid_linux_utc_offset_raises_error():
+    with pytest.raises(ValueError):
+        normalize_linux_timestamp(
+            "Aug 29 17:00:00",
+            year=2026,
+            utc_offset="invalid",
+        )

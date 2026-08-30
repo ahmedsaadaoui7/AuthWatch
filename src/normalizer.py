@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 def build_normalized_event(
     *,
     timestamp,
@@ -159,7 +160,7 @@ LINUX_EVENT_TYPES = {
 }
 
 
-def normalize_linux_auth_event(event):
+def normalize_linux_auth_event(event, *, year, utc_offset):
     event_type = event.get("event_type")
 
     if event_type not in LINUX_EVENT_TYPES:
@@ -184,8 +185,14 @@ def normalize_linux_auth_event(event):
         if key not in common_fields
     }
 
+    normalized_timestamp = normalize_linux_timestamp(
+        event.get("timestamp"),
+        year=year,
+        utc_offset=utc_offset,
+    )
+
     return build_normalized_event(
-        timestamp=event.get("timestamp"),
+        timestamp=normalized_timestamp,
         source="linux_auth",
         event_type=event_type,
         host=event.get("host"),
@@ -195,4 +202,31 @@ def normalize_linux_auth_event(event):
         command_line=event.get("command"),
         result=event.get("result"),
         details=details,
+    )
+
+
+def normalize_linux_timestamp(timestamp, *, year, utc_offset):
+    try:
+        local_time = datetime.strptime(
+            f"{year} {timestamp}",
+            "%Y %b %d %H:%M:%S",
+        )
+
+        timezone_info = datetime.fromisoformat(
+            f"2000-01-01T00:00:00{utc_offset}"
+        ).tzinfo
+
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Invalid Linux timestamp or UTC offset: "
+            f"{timestamp}, {utc_offset}"
+        ) from exc
+
+    local_time = local_time.replace(tzinfo=timezone_info)
+
+    return (
+        local_time
+        .astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
     )
