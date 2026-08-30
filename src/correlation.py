@@ -64,6 +64,10 @@ def correlate_process_to_network(events, window_seconds=300):
             "severity": "medium",
             "first_seen": process_event["timestamp"],
             "last_seen": event["timestamp"],
+            "related_events": [
+                process_event,
+                event,
+            ],
             "details": {
                 "host": host,
                 "username": event.get("username"),
@@ -126,6 +130,10 @@ def correlate_process_to_dns(events, window_seconds=300):
             "severity": "medium",
             "first_seen": process_event["timestamp"],
             "last_seen": event["timestamp"],
+            "related_events": [
+                process_event,
+                event,
+            ],
             "details": {
                 "host": host,
                 "username": event.get("username"),
@@ -196,6 +204,10 @@ def correlate_authentication_to_process(events, window_seconds=300):
             "severity": "medium",
             "first_seen": authentication_event["timestamp"],
             "last_seen": event["timestamp"],
+            "related_events": [
+                authentication_event,
+                event,
+            ],
             "details": {
                 "host": host,
                 "username": authentication_event.get("username"),
@@ -259,6 +271,10 @@ def correlate_privileged_logon_to_process(events, window_seconds=300):
             "severity": "medium",
             "first_seen": privileged_event["timestamp"],
             "last_seen": event["timestamp"],
+            "related_events": [
+                privileged_event,
+                event,
+            ],
             "details": {
                 "host": host,
                 "username": privileged_event.get("username"),
@@ -340,6 +356,10 @@ def correlate_ssh_to_sudo(events, window_seconds=300):
             "severity": "medium",
             "first_seen": ssh_event["timestamp"],
             "last_seen": event["timestamp"],
+            "related_events": [
+                ssh_event,
+                event,
+            ],
             "details": {
                 "host": host,
                 "username": username,

@@ -43,7 +43,17 @@ def test_process_to_network_correlation():
     assert correlations[0]["details"]["process_guid"] == "{PROC-001}"
     assert correlations[0]["details"]["destination_ip"] == "10.0.0.50"
     assert correlations[0]["details"]["destination_port"] == "443"
+    assert len(correlations[0]["related_events"]) == 2
 
+    assert (
+        correlations[0]["related_events"][0]["event_type"]
+        == "process_creation"
+    )
+
+    assert (
+        correlations[0]["related_events"][1]["event_type"]
+        == "network_connection"
+    )
 
 def test_process_to_network_different_process_guid_does_not_correlate():
     events = [
@@ -147,6 +157,10 @@ def test_process_to_dns_correlation():
     assert correlations[0]["details"]["query_name"] == "example.com"
     assert correlations[0]["details"]["query_results"] == "10.0.0.50"
 
+    assert len(correlations[0]["related_events"]) == 2
+    assert correlations[0]["related_events"][0]["event_type"] == "process_creation"
+    assert correlations[0]["related_events"][1]["event_type"] == "dns_query"
+
 
 def test_process_to_dns_different_process_guid_does_not_correlate():
     events = [
@@ -202,6 +216,10 @@ def test_authentication_to_process_correlation():
     assert correlations[0]["details"]["session_id"] == "0x12345"
     assert correlations[0]["details"]["source_ip"] == "192.168.1.50"
     assert correlations[0]["details"]["process_name"] == "powershell.exe"
+
+    assert len(correlations[0]["related_events"]) == 2
+    assert correlations[0]["related_events"][0]["event_type"] == "authentication_success"
+    assert correlations[0]["related_events"][1]["event_type"] == "process_creation"
 
 
 def test_authentication_to_process_different_session_does_not_correlate():
@@ -328,6 +346,10 @@ def test_ssh_to_sudo_uses_most_recent_valid_login():
     assert correlations[0]["first_seen"] == "2026-08-30T15:28:00Z"
     assert correlations[0]["details"]["source_ip"] == "192.168.1.50"
     assert correlations[0]["details"]["target_user"] == "root"
+
+    assert len(correlations[0]["related_events"]) == 2
+    assert correlations[0]["related_events"][0]["event_type"] == "authentication_success"
+    assert correlations[0]["related_events"][1]["event_type"] == "sudo_execution"
 
 
 def test_ssh_to_sudo_different_username_does_not_correlate():
