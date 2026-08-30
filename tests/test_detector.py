@@ -5,6 +5,7 @@ from src.detector import (
     detect_one_ip_many_accounts,
     detect_password_spray,
     detect_success_after_failures,
+    filter_authentication_events,
     run_detection_engine,
 )
 from src.parser import load_auth_events
@@ -1680,3 +1681,92 @@ def test_detection_engine_uses_custom_brute_force_window():
     rule_ids = {alert["rule_id"] for alert in alerts}
 
     assert "AUTH-BF-001" in rule_ids
+
+
+def test_filter_authentication_events_keeps_legacy_and_v3_auth():
+    events = [
+        {
+            "timestamp": "2026-08-30T13:00:00",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:10Z",
+            "event_type": "authentication_success",
+            "username": "hawk",
+            "source_ip": "192.168.1.20",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:20Z",
+            "event_type": "process_creation",
+            "username": "hawk",
+            "result": None,
+        },
+    ]
+
+    filtered = filter_authentication_events(events)
+
+    assert len(filtered) == 2
+    assert filtered[0].get("event_type") is None
+    assert filtered[1]["event_type"] == "authentication_success"
+
+
+def test_detection_engine_ignores_non_authentication_v3_events():
+    events = [
+        {
+            "timestamp": "2026-08-30T13:00:00Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:10Z",
+            "event_type": "process_creation",
+            "username": "hawk",
+            "process_name": "powershell.exe",
+            "result": None,
+        },
+        {
+            "timestamp": "2026-08-30T13:00:15Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:25Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:30Z",
+            "event_type": "sudo_execution",
+            "username": "hawk",
+            "result": "success",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:35Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-08-30T13:00:45Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.8",
+            "result": "failure",
+        },
+    ]
+
+    alerts = run_detection_engine(events)
+
+    assert len(alerts) == 1
+    assert alerts[0]["rule_id"] == "AUTH-BF-001"
+    assert alerts[0]["details"]["failed_attempts"] == 5

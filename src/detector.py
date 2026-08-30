@@ -4,6 +4,28 @@ from datetime import datetime
 from src.config import DEFAULT_DETECTION_CONFIG
 
 
+AUTHENTICATION_EVENT_TYPES = {
+    "authentication_failure",
+    "authentication_success",
+}
+
+
+def filter_authentication_events(events):
+    authentication_events = []
+
+    for event in events:
+        event_type = event.get("event_type")
+
+        if event_type is None:
+            authentication_events.append(event)
+            continue
+
+        if event_type in AUTHENTICATION_EVENT_TYPES:
+            authentication_events.append(event)
+
+    return authentication_events
+
+
 def detect_brute_force(
     events,
     threshold=DEFAULT_DETECTION_CONFIG["AUTH-BF-001"]["threshold"],
@@ -290,6 +312,8 @@ def detect_many_ips_one_account(
 def run_detection_engine(events, disabled_accounts=None, config=None):
     alerts = []
 
+    authentication_events = filter_authentication_events(events)
+
     if config is None:
         config = {}
 
@@ -307,7 +331,7 @@ def run_detection_engine(events, disabled_accounts=None, config=None):
 
         alerts.extend(
             detector(
-                events,
+                authentication_events,
                 **rule_config,
             )
         )
@@ -315,7 +339,7 @@ def run_detection_engine(events, disabled_accounts=None, config=None):
     if disabled_accounts is not None:
         alerts.extend(
             detect_disabled_account_attempts(
-                events,
+                authentication_events,
                 disabled_accounts,
             )
         )
