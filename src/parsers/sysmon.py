@@ -203,35 +203,6 @@ def parse_dns_query(xml_record):
     }
 
 
-def parse_network_connection(xml_record):
-    event_id = extract_event_id(xml_record)
-
-    if event_id != "3":
-        raise ValueError(
-            f"Expected Sysmon Event ID 3, got {event_id}"
-        )
-
-    system_context = extract_system_context(xml_record)
-    event_data = extract_event_data(xml_record)
-
-    return {
-        "event_id": event_id,
-        "timestamp": system_context["timestamp"],
-        "host": system_context["host"],
-        "process_guid": event_data.get("ProcessGuid"),
-        "process_id": event_data.get("ProcessId"),
-        "process_name": event_data.get("Image"),
-        "username": event_data.get("User"),
-        "protocol": event_data.get("Protocol"),
-        "initiated": event_data.get("Initiated"),
-        "source_ip": event_data.get("SourceIp"),
-        "source_port": event_data.get("SourcePort"),
-        "destination_ip": event_data.get("DestinationIp"),
-        "destination_port": event_data.get("DestinationPort"),
-        "destination_hostname": event_data.get("DestinationHostname"),
-    }
-
-
 def parse_sysmon_event(xml_record):
     event_id = extract_event_id(xml_record)
 
