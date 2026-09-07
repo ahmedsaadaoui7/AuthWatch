@@ -1,0 +1,67 @@
+{
+    "scenario_id": "DET-MI-001",
+    "description": "Five unique source IPs successfully authenticate to the same account within 300 seconds.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-MI-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T17:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.101",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T17:00:30Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.102",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T17:01:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.103",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T17:01:30Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.104",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T17:02:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.105",
+            "result": "success",
+            "details": {}
+        }
+    ]
+}

@@ -1,0 +1,60 @@
+{
+    "scenario_id": "NORM-001",
+    "description": "Normal Windows authentication and endpoint activity that should produce no detections or correlations.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T09:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x1000",
+            "source_ip": "10.0.0.20",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T09:10:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x2000",
+            "process_name": "explorer.exe",
+            "process_id": "2100",
+            "process_guid": "{NORM-PROC-001}",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T09:12:00Z",
+            "source": "sysmon",
+            "event_id": "22",
+            "event_type": "dns_query",
+            "host": "WIN-CLIENT01",
+            "process_name": "svchost.exe",
+            "process_guid": "{NORM-DNS-002}",
+            "details": {
+                "query_name": "example.internal"
+            }
+        },
+        {
+            "timestamp": "2026-09-06T09:15:00Z",
+            "source": "sysmon",
+            "event_id": "3",
+            "event_type": "network_connection",
+            "host": "WIN-CLIENT01",
+            "process_name": "svchost.exe",
+            "process_guid": "{NORM-NET-003}",
+            "destination_ip": "10.0.0.10",
+            "details": {
+                "destination_port": "443"
+            }
+        }
+    ]
+}

@@ -1,0 +1,52 @@
+{
+    "scenario_id": "ZERO-001",
+    "description": "Valid mixed V3 telemetry that completes analysis successfully without producing detections or correlations.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [],
+        "detection_count": 0,
+        "correlation_count": 0
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-07T08:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT02",
+            "username": "alice",
+            "session_id": "0xA100",
+            "source_ip": "10.0.0.20",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-07T08:10:00Z",
+            "source": "sysmon",
+            "event_id": "11",
+            "event_type": "file_creation",
+            "host": "WIN-CLIENT02",
+            "username": "alice",
+            "process_name": "notepad.exe",
+            "process_id": "3200",
+            "process_guid": "{ZERO-FILE-PROC-001}",
+            "details": {
+                "target_filename": "C:\\Users\\alice\\Documents\\notes.txt"
+            }
+        },
+        {
+            "timestamp": "2026-09-07T08:20:00Z",
+            "source": "sysmon",
+            "event_id": "13",
+            "event_type": "registry_modification",
+            "host": "WIN-CLIENT02",
+            "username": "alice",
+            "process_name": "explorer.exe",
+            "process_id": "3300",
+            "process_guid": "{ZERO-REG-PROC-001}",
+            "details": {
+                "target_object": "HKCU\\Software\\Example"
+            }
+        }
+    ]
+}

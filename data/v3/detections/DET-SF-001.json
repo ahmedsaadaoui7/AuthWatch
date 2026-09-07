@@ -1,0 +1,57 @@
+{
+    "scenario_id": "DET-SF-001",
+    "description": "Three failed authentication attempts followed by a successful login for the same account and source IP within 60 seconds.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-SF-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T14:00:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.70",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T14:00:10Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.70",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T14:00:20Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.70",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T14:00:30Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.70",
+            "session_id": "0x7000",
+            "result": "success",
+            "details": {}
+        }
+    ]
+}

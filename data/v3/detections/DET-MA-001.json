@@ -1,0 +1,67 @@
+{
+    "scenario_id": "DET-MA-001",
+    "description": "One source IP successfully authenticates to five unique accounts within 300 seconds.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-MA-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T16:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "source_ip": "10.0.0.90",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T16:00:30Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "bob",
+            "source_ip": "10.0.0.90",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T16:01:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "carol",
+            "source_ip": "10.0.0.90",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T16:01:30Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "david",
+            "source_ip": "10.0.0.90",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T16:02:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "eve",
+            "source_ip": "10.0.0.90",
+            "result": "success",
+            "details": {}
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "scenario_id": "INVALID-EVENT-001",
+    "description": "A Linux authentication event has a valid timestamp but an unsupported event type. AuthWatch should reject it during normalization.",
+    "input": {
+        "event": {
+            "event_type": "unknown_linux_event",
+            "timestamp": "Aug 29 17:30:00"
+        },
+        "year": 2026,
+        "utc_offset": "+01:00"
+    },
+    "expected_error": "Unsupported Linux authentication event type: unknown_linux_event"
+}

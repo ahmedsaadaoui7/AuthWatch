@@ -1,0 +1,67 @@
+{
+    "scenario_id": "BOUND-DETECTION-001",
+    "description": "Five failed authentication attempts against the same account occur across exactly 60 seconds. The brute-force detection window is inclusive, so AUTH-BF-001 should trigger.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-BF-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T12:00:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.130",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:15Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.130",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:30Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.130",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:45Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.130",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:01:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.130",
+            "result": "failure",
+            "details": {}
+        }
+    ]
+}

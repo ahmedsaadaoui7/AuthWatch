@@ -1,0 +1,42 @@
+{
+    "scenario_id": "CORR-PROC-DNS-001",
+    "description": "A process creation event is followed by a DNS query from the same process on the same host.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-PROC-DNS-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T20:00:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "7300",
+            "process_guid": "{CORR-PROC-DNS-PROC-001}",
+            "parent_process_name": "explorer.exe",
+            "command_line": "powershell.exe",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T20:00:15Z",
+            "source": "sysmon",
+            "event_id": "22",
+            "event_type": "dns_query",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "7300",
+            "process_guid": "{CORR-PROC-DNS-PROC-001}",
+            "details": {
+                "query_name": "update.example.internal",
+                "query_status": "0",
+                "query_results": "10.0.0.50"
+            }
+        }
+    ]
+}

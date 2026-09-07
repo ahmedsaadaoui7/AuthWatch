@@ -1,0 +1,39 @@
+{
+    "scenario_id": "FP-PROC-NET-001",
+    "description": "A process creation and network event occur on the same host and close in time but have different ProcessGuids, so they must not correlate.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T22:00:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "8000",
+            "process_guid": "{FP-PROC-A}",
+            "command_line": "powershell.exe",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T22:00:10Z",
+            "source": "sysmon",
+            "event_id": "3",
+            "event_type": "network_connection",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "8100",
+            "process_guid": "{FP-PROC-B}",
+            "source_ip": "10.0.0.20",
+            "destination_ip": "10.0.0.50",
+            "details": {
+                "destination_port": "443"
+            }
+        }
+    ]
+}

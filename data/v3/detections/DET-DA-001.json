@@ -1,0 +1,26 @@
+{
+    "scenario_id": "DET-DA-001",
+    "description": "An authentication attempt is made against an account that is listed as disabled.",
+    "disabled_accounts": [
+        "former.employee"
+    ],
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-DA-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T15:00:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "former.employee",
+            "source_ip": "10.0.0.80",
+            "result": "failure",
+            "details": {}
+        }
+    ]
+}

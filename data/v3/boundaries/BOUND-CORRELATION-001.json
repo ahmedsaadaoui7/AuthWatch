@@ -1,0 +1,39 @@
+{
+    "scenario_id": "BOUND-CORRELATION-001",
+    "description": "Process creation and network activity occur exactly 300 seconds apart. The correlation window is inclusive, so they should correlate.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-PROC-NET-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T11:00:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "5000",
+            "process_guid": "{BOUND-PROC-001}",
+            "command_line": "powershell.exe",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T11:05:00Z",
+            "source": "sysmon",
+            "event_id": "3",
+            "event_type": "network_connection",
+            "host": "WIN-CLIENT01",
+            "process_name": "powershell.exe",
+            "process_id": "5000",
+            "process_guid": "{BOUND-PROC-001}",
+            "destination_ip": "10.0.0.50",
+            "details": {
+                "destination_port": "443"
+            }
+        }
+    ]
+}

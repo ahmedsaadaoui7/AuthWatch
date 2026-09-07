@@ -1,0 +1,37 @@
+{
+    "scenario_id": "FP-AUTH-EXEC-001",
+    "description": "A successful authentication and nearby process creation on the same host but with different session IDs. They must not correlate.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T10:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x4000",
+            "source_ip": "10.0.0.20",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T10:00:15Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x5000",
+            "process_name": "powershell.exe",
+            "process_id": "4600",
+            "process_guid": "{FP-AUTH-EXEC-PROC-001}",
+            "parent_process_name": "explorer.exe",
+            "command_line": "powershell.exe",
+            "details": {}
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    "scenario_id": "CORR-PRIV-EXEC-001",
+    "description": "A privileged Windows logon is followed by process creation on the same host and within the same session.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-PRIV-EXEC-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T18:00:00Z",
+            "source": "windows_security",
+            "event_id": "4672",
+            "event_type": "privileged_logon",
+            "host": "WIN-SERVER01",
+            "username": "admin",
+            "session_id": "0x9000",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T18:00:30Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-SERVER01",
+            "username": "admin",
+            "session_id": "0x9000",
+            "process_name": "powershell.exe",
+            "process_id": "6100",
+            "process_guid": "{CORR-PRIV-EXEC-PROC-001}",
+            "parent_process_name": "explorer.exe",
+            "command_line": "powershell.exe",
+            "details": {}
+        }
+    ]
+}

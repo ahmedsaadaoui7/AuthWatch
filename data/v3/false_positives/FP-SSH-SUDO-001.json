@@ -1,0 +1,36 @@
+{
+    "scenario_id": "FP-SSH-SUDO-001",
+    "description": "A successful SSH login and nearby sudo execution occur on the same Linux host but belong to different users, so they must not correlate.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T22:30:00Z",
+            "source": "linux_auth",
+            "event_id": "sshd",
+            "event_type": "authentication_success",
+            "host": "LINUX-SERVER01",
+            "username": "alice",
+            "source_ip": "10.0.0.120",
+            "result": "success",
+            "details": {
+                "service": "sshd",
+                "authentication_method": "password"
+            }
+        },
+        {
+            "timestamp": "2026-09-06T22:30:30Z",
+            "source": "linux_auth",
+            "event_id": "sudo",
+            "event_type": "sudo_execution",
+            "host": "LINUX-SERVER01",
+            "username": "bob",
+            "command_line": "sudo systemctl restart ssh",
+            "details": {
+                "target_user": "root"
+            }
+        }
+    ]
+}
