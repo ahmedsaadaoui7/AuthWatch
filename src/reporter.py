@@ -496,13 +496,23 @@ def generate_investigation_markdown_report(
                 lines.append("- Related source events:")
 
                 for event in event_references:
+                    event_parts = [
+                        event["timestamp"],
+                        event["source"],
+                    ]
+
+                    if event.get("event_id") is not None:
+                        event_parts.append(
+                            f"Event {event['event_id']}"
+                        )
+
+                    event_parts.extend([
+                        event["event_type"],
+                        event["host"],
+                    ])
+
                     lines.append(
-                        "  - "
-                        f"{event['timestamp']} | "
-                        f"{event['source']} | "
-                        f"Event {event['event_id']} | "
-                        f"{event['event_type']} | "
-                        f"{event['host']}"
+                        "  - " + " | ".join(event_parts)
                     )
 
             lines.append("")

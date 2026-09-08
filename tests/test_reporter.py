@@ -1018,3 +1018,76 @@ def test_generate_investigation_markdown_report_correlations(
         "- Last seen: 2026-09-04T10:00:10Z"
         in content
     )
+
+
+def test_generate_investigation_markdown_report_omits_missing_event_id(
+    tmp_path,
+):
+    alerts = []
+
+    correlations = [
+        {
+            "correlation_id": "CORR-SSH-SUDO-001",
+            "title": "SSH Login to Privileged Execution",
+            "severity": "medium",
+            "first_seen": "2026-09-08T19:00:00Z",
+            "last_seen": "2026-09-08T19:01:00Z",
+            "details": {
+                "host": "kali",
+                "username": "alice",
+                "source_ip": "10.0.0.120",
+                "target_user": "root",
+                "command_line": "/usr/bin/systemctl status ssh",
+            },
+            "related_events": [
+                {
+                    "timestamp": "2026-09-08T19:00:00Z",
+                    "source": "linux_auth",
+                    "event_id": None,
+                    "event_type": "authentication_success",
+                    "host": "kali",
+                    "username": "alice",
+                    "source_ip": "10.0.0.120",
+                    "details": {
+                        "service": "sshd",
+                    },
+                },
+                {
+                    "timestamp": "2026-09-08T19:01:00Z",
+                    "source": "linux_auth",
+                    "event_id": None,
+                    "event_type": "sudo_execution",
+                    "host": "kali",
+                    "username": "alice",
+                    "command_line": "/usr/bin/systemctl status ssh",
+                    "details": {
+                        "target_user": "root",
+                    },
+                },
+            ],
+        },
+    ]
+
+    output_file = tmp_path / "linux_investigation.md"
+
+    generate_investigation_markdown_report(
+        alerts,
+        correlations,
+        output_file,
+    )
+
+    content = output_file.read_text(
+        encoding="utf-8"
+    )
+
+    assert "Event None" not in content
+
+    assert (
+        "2026-09-08T19:00:00Z | "
+        "linux_auth | authentication_success | kali"
+    ) in content
+
+    assert (
+        "2026-09-08T19:01:00Z | "
+        "linux_auth | sudo_execution | kali"
+    ) in content
