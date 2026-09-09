@@ -1,77 +1,128 @@
 # AuthWatch
 
-AuthWatch is a defensive cybersecurity project for detecting suspicious authentication activity and supporting SOC investigation workflows.
+AuthWatch is a defensive cybersecurity project for detecting suspicious authentication activity, correlating endpoint telemetry, and supporting structured SOC investigation workflows.
 
-Version 2 expands the original brute-force analyzer into a configurable multi-rule authentication detection engine. It supports CSV and JSON authentication logs, multiple detection techniques, configurable thresholds and time windows, optional disabled-account context, terminal alerts, Markdown incident reports, and structured JSON alert output.
+Version 3 expands the V2 multi-rule authentication detection engine into a multi-source endpoint telemetry and event-correlation platform. It supports saved Windows Security EVTX files, saved Sysmon EVTX files, Linux authentication logs, and the existing V2-compatible CSV/JSON authentication formats.
 
-The project is designed to evolve gradually into a larger authentication threat detection and SOC investigation platform while maintaining clear architecture, automated testing, professional documentation, safe synthetic data, and meaningful version history.
+AuthWatch V3 normalizes telemetry from different sources into a common event model, applies authentication-focused detection rules, correlates related activity, reconstructs investigation timelines, attaches evidence-based MITRE ATT&CK mappings where supported, and generates human-readable Markdown and structured JSON investigation reports.
+
+The project is designed to evolve gradually while maintaining clear architecture, deterministic analysis, automated testing, professional documentation, safe synthetic or sanitized data, and meaningful version history.
 
 ---
 
 ## Current Version
 
-**V2 — Multi-Rule Detection Engine**
+**V3 — Endpoint Telemetry & Event Correlation**
 
-AuthWatch V2 provides a complete command-line workflow:
+AuthWatch V3 provides a multi-source offline investigation workflow:
 
 ```text
-Authentication CSV / JSON
-          |
-          v
-        Parser
-          |
-          v
-   Event Validation
-          |
-          v
- Multi-Rule Detection Engine
-          |
-          v
-        Alerts
-      /    |     \
-     v     v      v
- Terminal Markdown JSON
-          Report  Output
+V2 Authentication CSV / JSON ─┐
+Windows Security EVTX ─────────┤
+Sysmon EVTX ───────────────────┼──> Parsing
+Linux Authentication Logs ─────┘
+                                  |
+                                  v
+                            Normalization
+                                  |
+                                  v
+                         Detection Engine
+                                  |
+                                  v
+                        Correlation Engine
+                                  |
+                                  v
+                       Investigation Timeline
+                                  |
+                                  v
+                         MITRE ATT&CK Mapping
+                                  |
+                                  v
+                       Investigation Results
+                            /           \
+                           v             v
+                       Markdown         JSON
+                        Report          Output
 ```
 
-Optional detection context can also be supplied through:
+Optional analysis context and configuration can also be supplied through:
 
 - A JSON detection configuration file
+- A JSON correlation configuration file
 - A disabled-account username list
+- Linux year and UTC-offset context for traditional syslog-style timestamps
+
+AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by the analyst. It does not automatically discover, collect, or continuously monitor operating-system logs.
 
 ---
 
 ## Features
 
-- Parse authentication events from CSV and JSON files
-- Validate required authentication fields and values
-- Validate ISO-format timestamps
-- Reject unsupported authentication-log formats
+### Telemetry and Input
+
+- Parse V2-compatible authentication events from CSV and JSON
+- Read saved Windows Security EVTX telemetry
+- Read saved Sysmon EVTX telemetry
+- Parse supported Linux authentication-log entries
+- Support Windows Security events `4624`, `4625`, `4648`, and `4672`
+- Support Sysmon events `1`, `3`, `11`, `13`, and `22`
+- Normalize Windows, Sysmon, Linux, and legacy authentication telemetry into a common event model
+- Normalize traditional Linux timestamps to UTC using analyst-supplied year and UTC-offset context
+- Validate supported telemetry and reject malformed or unsupported input cleanly
+- Combine multiple telemetry sources into a single V3 investigation
+
+### Detection
+
 - Detect potential brute-force activity
 - Detect potential password spraying
 - Detect successful login after repeated failures
 - Detect authentication attempts against disabled accounts
 - Detect one source IP accessing many accounts
 - Detect one account being accessed from many source IPs
-- Apply configurable thresholds and time windows
+- Apply configurable detection thresholds and time windows
 - Load optional disabled-account context
 - Load rule-specific JSON detection configuration
-- Assign rule IDs and severity levels to alerts
-- Display alerts in the terminal
-- Generate Markdown incident reports
-- Generate structured JSON alert output
+- Assign stable rule IDs and severity levels
+
+### Correlation and Investigation
+
+- Correlate successful authentication with process activity
+- Correlate privileged logon with process activity
+- Correlate process creation with network activity
+- Correlate process creation with DNS activity
+- Correlate Linux SSH login with subsequent sudo execution
+- Use strong identifiers such as session IDs and ProcessGuids where available
+- Apply configurable correlation windows
+- Preserve related source events as supporting evidence
+- Build chronological investigation timelines
+- Identify affected users, hosts, and IP addresses
+- Attach predefined MITRE ATT&CK mappings only where observed evidence supports them
+
+### Reporting and CLI
+
+- Display detections and correlations in the terminal
+- Generate V3 Markdown investigation reports
+- Generate structured V3 JSON investigation output
 - Generate Markdown and JSON outputs from the same analysis
-- Produce valid JSON output even when no alerts are detected
-- Handle missing and malformed input cleanly
+- Produce valid V3 investigation reports when zero findings are present
+- Preserve V2 command-line compatibility for authentication-only analysis
+- Support mixed telemetry sources in a single V3 investigation
 - Return appropriate command-line exit codes
-- Use only synthetic or sanitized authentication data
-- Provide automated unit and integration tests
+- Handle missing files, malformed input, and invalid configuration cleanly
+
+### Quality and Safety
+
+- Use only synthetic, sanitized, or explicitly authorized telemetry in the repository
+- Keep real EVTX telemetry out of version control
+- Provide automated unit, integration, CLI, regression, and scenario-dataset tests
+- Validate false-positive conditions and exact time-window boundaries
+- Produce deterministic Markdown and JSON investigation results for identical input and configuration
 
 ---
 
 ## Detection Rules
 
-AuthWatch V2 currently implements six authentication-focused detection rules.
+AuthWatch V3 preserves the six authentication-focused detection rules introduced by V2.
 
 | Rule ID | Detection | Severity | Default threshold | Default window |
 |---|---|---:|---:|---:|
@@ -146,13 +197,53 @@ The exact 300-second boundary is inclusive.
 
 ---
 
-## Detection Methodology
+## Correlation Rules
+
+AuthWatch V3 adds five deterministic event-correlation rules.
+
+| Correlation ID | Relationship |
+|---|---|
+| `CORR-AUTH-EXEC-001` | Successful Authentication → Process Activity |
+| `CORR-PRIV-EXEC-001` | Privileged Logon → Process Activity |
+| `CORR-PROC-NET-001` | Process Creation → Network Activity |
+| `CORR-PROC-DNS-001` | Process Creation → DNS Activity |
+| `CORR-SSH-SUDO-001` | Linux SSH Login → Privileged Execution |
+
+### `CORR-AUTH-EXEC-001` — Authentication to Process Activity
+
+Connects a successful authentication event to process creation when the host and session identifier match and the process activity occurs within the configured correlation window.
+
+### `CORR-PRIV-EXEC-001` — Privileged Logon to Process Activity
+
+Connects privileged Windows logon activity to process creation when the host and session identifier match and the process activity occurs within the configured correlation window.
+
+### `CORR-PROC-NET-001` — Process to Network Activity
+
+Connects process creation to subsequent network activity when the host and ProcessGuid match and the network event occurs within the configured correlation window.
+
+### `CORR-PROC-DNS-001` — Process to DNS Activity
+
+Connects process creation to subsequent DNS activity when the host and ProcessGuid match and the DNS event occurs within the configured correlation window.
+
+### `CORR-SSH-SUDO-001` — SSH Login to Privileged Execution
+
+Connects a successful Linux SSH login to subsequent sudo execution when the host and username match and the sudo event occurs within the configured correlation window.
+
+If multiple valid SSH logins are available, AuthWatch uses the most recent valid login before the sudo event.
+
+Correlation does not automatically prove compromise. It connects evidence that belongs to the same investigation story so an analyst can evaluate the activity in context.
+
+The default correlation window is 300 seconds and the exact boundary is inclusive.
+
+---
+
+## Detection and Correlation Methodology
 
 Authentication events are parsed into a shared internal structure and validated before detection begins.
 
-For time-window rules, AuthWatch sorts events chronologically and maintains rule-specific sliding windows. Events that fall outside the configured window are removed before the current detection condition is evaluated.
+For time-window detection rules, AuthWatch sorts events chronologically and maintains rule-specific sliding windows. Events that fall outside the configured window are removed before the current detection condition is evaluated.
 
-Different rules group activity differently depending on the behavior being detected:
+Different detection rules group activity differently depending on the behavior being detected:
 
 ```text
 AUTH-BF-001 -> source IP + username
@@ -180,15 +271,113 @@ Each generated alert uses a common structure:
 }
 ```
 
-This common structure allows the same detections to be displayed in the terminal, written to Markdown reports, or exported as structured JSON.
+The V3 correlation layer then evaluates normalized telemetry using source-specific evidence.
+
+Stronger identifiers are preferred where they exist:
+
+```text
+Windows authentication/process relationships -> host + session_id
+Sysmon process/network/DNS relationships      -> host + ProcessGuid
+Linux SSH/sudo relationships                  -> host + username + time
+```
+
+The V3 investigation flow is:
+
+```text
+Observed telemetry
+      ↓
+Normalization
+      ↓
+Detection
+      ↓
+Correlation
+      ↓
+Timeline
+      ↓
+MITRE ATT&CK mapping
+      ↓
+Analyst investigation report
+```
+
+AuthWatch distinguishes these concepts deliberately:
+
+- **Detection** finds suspicious behavior.
+- **Correlation** connects related events.
+- **Timeline** orders evidence into an investigation story.
+- **MITRE ATT&CK mapping** labels supported observed behavior using a standard technique name.
+- **Supporting evidence** preserves the data used to justify detections and correlations.
 
 ---
 
-## Detection Configuration
+## Normalized Event Model
 
-V2 centralizes configurable rule defaults in `src/config.py`.
+V3 converts supported telemetry sources into a common event structure before cross-source analysis.
 
-Default configuration:
+The normalized model contains fields such as:
+
+```json
+{
+    "timestamp": "2026-09-08T19:00:00Z",
+    "source": "windows_security",
+    "event_id": "4624",
+    "event_type": "authentication_success",
+    "host": "WIN-CLIENT01",
+    "username": "alice",
+    "session_id": "0x1234",
+    "source_ip": "10.0.0.20",
+    "destination_ip": null,
+    "process_name": null,
+    "process_id": null,
+    "process_guid": null,
+    "parent_process_name": null,
+    "command_line": null,
+    "result": "success",
+    "details": {}
+}
+```
+
+Supported normalized event types include:
+
+```text
+authentication_failure
+authentication_success
+explicit_credentials
+privileged_logon
+process_creation
+network_connection
+file_creation
+registry_modification
+dns_query
+sudo_execution
+session_activity
+```
+
+---
+
+## MITRE ATT&CK Mapping
+
+AuthWatch V3 uses predefined, evidence-based ATT&CK mappings only where the observed behavior supports them.
+
+Current mappings:
+
+| AuthWatch Rule | MITRE ATT&CK |
+|---|---|
+| `AUTH-BF-001` | `T1110` — Brute Force |
+| `AUTH-PS-001` | `T1110.003` — Password Spraying |
+
+AuthWatch does not force a MITRE mapping onto every detection or correlation.
+
+A missing mapping means the available evidence is not strong enough for the project to make that specific ATT&CK claim.
+
+---
+
+## Detection and Correlation Configuration
+
+AuthWatch V3 centralizes configurable detection and correlation defaults in `src/config.py`.
+
+### Detection Configuration
+
+Default detection configuration:
 
 ```json
 {
@@ -215,40 +404,43 @@ Default configuration:
 }
 ```
 
-A custom JSON configuration can override one or more settings.
+`AUTH-DA-001` is not threshold-based and therefore is not included in the configurable threshold/window defaults.
 
-Example:
+### Correlation Configuration
+
+Default correlation configuration:
 
 ```json
 {
-    "AUTH-BF-001": {
-        "threshold": 6,
-        "window_seconds": 90
+    "CORR-PROC-NET-001": {
+        "window_seconds": 300
     },
-    "AUTH-PS-001": {
-        "threshold": 8
+    "CORR-PROC-DNS-001": {
+        "window_seconds": 300
+    },
+    "CORR-AUTH-EXEC-001": {
+        "window_seconds": 300
+    },
+    "CORR-PRIV-EXEC-001": {
+        "window_seconds": 300
+    },
+    "CORR-SSH-SUDO-001": {
+        "window_seconds": 300
     }
 }
 ```
 
-Partial overrides are supported. Any omitted setting keeps its default value.
-
-AuthWatch rejects configuration files containing:
-
-- Unknown rule IDs
-- Unknown settings
-- Non-object rule configurations
-- Non-positive values
-- Incorrect value types
-- Invalid JSON structure
-
-`AUTH-DA-001` is not threshold-based and therefore is not included in the configurable threshold/window defaults.
+Partial overrides are supported. AuthWatch validates configuration files and rejects unsupported rule IDs, unknown settings, malformed structures, non-positive values, incorrect value types, and invalid JSON.
 
 ---
 
-## Authentication Log Format
+## Telemetry Input Formats
 
-AuthWatch V2 accepts authentication logs in either CSV or JSON format.
+AuthWatch V3 supports multiple offline telemetry sources. The analyst explicitly provides the files to analyze; AuthWatch does not automatically discover or collect operating-system logs.
+
+### V2-Compatible Authentication CSV / JSON
+
+The original authentication-event format remains supported for backward compatibility.
 
 Supported file extensions:
 
@@ -257,65 +449,78 @@ Supported file extensions:
 .json
 ```
 
-Other authentication-log extensions are rejected with a clear error.
-
-### Required Fields
-
-Every authentication event must contain:
+Authentication events must provide the fields required by the detection engine, including:
 
 | Field | Description |
 |---|---|
 | `timestamp` | Authentication event time in ISO format |
 | `username` | Account involved in the authentication attempt |
-| `source_ip` | Source IP address of the authentication attempt |
-| `result` | Authentication result: `success` or `failure` |
+| `source_ip` | Source IP address |
+| `result` | Authentication result such as `success` or `failure` |
 
-Required values must be non-empty strings.
+### Windows Security EVTX
 
-### CSV Example
+Supported Windows Security event IDs:
 
-```csv
-timestamp,username,source_ip,result
-2026-08-08T09:00:00,admin,10.0.0.50,failure
-2026-08-08T09:00:12,admin,10.0.0.50,failure
-2026-08-08T09:00:24,admin,10.0.0.50,failure
-2026-08-08T09:00:36,admin,10.0.0.50,failure
-2026-08-08T09:00:48,admin,10.0.0.50,failure
+| Event ID | Meaning |
+|---|---|
+| `4624` | Successful logon |
+| `4625` | Failed logon |
+| `4648` | Logon using explicit credentials |
+| `4672` | Special privileges assigned to a new logon |
+
+Example:
+
+```bash
+python main.py --windows-security Security.evtx
 ```
 
-### JSON Example
+### Sysmon EVTX
 
-JSON authentication logs must contain a top-level list of event objects.
+Supported Sysmon event IDs:
 
-```json
-[
-    {
-        "timestamp": "2026-08-08T09:00:00",
-        "username": "admin",
-        "source_ip": "10.0.0.50",
-        "result": "failure"
-    },
-    {
-        "timestamp": "2026-08-08T09:00:12",
-        "username": "admin",
-        "source_ip": "10.0.0.50",
-        "result": "failure"
-    }
-]
+| Event ID | Meaning |
+|---|---|
+| `1` | Process creation |
+| `3` | Network connection |
+| `11` | File creation |
+| `13` | Registry value modification |
+| `22` | DNS query |
+
+Example:
+
+```bash
+python main.py --sysmon Sysmon.evtx
 ```
 
-AuthWatch validates both CSV and JSON events through the same shared event-validation logic.
+### Linux Authentication Logs
 
-Input is rejected when:
+Supported Linux activity includes:
 
-- Required fields are missing
-- Required values are empty
-- Required values are not strings
-- The authentication result is not `success` or `failure`
-- The timestamp cannot be parsed as ISO format
-- JSON authentication data is not a top-level list
-- A JSON event is not an object
-- The authentication-log file format is unsupported
+- Failed SSH authentication
+- Successful SSH authentication
+- SSH password/public-key authentication
+- sudo execution
+- SSH session open activity
+- SSH session close activity
+
+Example:
+
+```bash
+python main.py     --linux-auth auth.log     --linux-year 2026     --linux-utc-offset +01:00
+```
+
+Traditional Linux authentication logs may omit the year and timezone. AuthWatch therefore requires `--linux-year` and `--linux-utc-offset` with `--linux-auth` and converts the timestamp to UTC.
+
+AuthWatch does not guess missing year or timezone information.
+
+### Mixed Telemetry Analysis
+
+Multiple telemetry sources can be supplied in the same V3 investigation.
+
+```bash
+python main.py     --windows-security Security.evtx     --sysmon Sysmon.evtx     --linux-auth auth.log     --linux-year 2026     --linux-utc-offset +01:00     --report investigation.md     --json-output investigation.json
+```
 
 ---
 
@@ -333,11 +538,8 @@ disabled_service
 
 Blank lines are ignored and duplicate usernames are removed.
 
-The list is supplied with:
-
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --disabled-accounts disabled_accounts.txt
+python main.py data/brute_force_auth_log.csv     --disabled-accounts disabled_accounts.txt
 ```
 
 The file should contain only safe synthetic or sanitized usernames when used in this repository.
@@ -351,25 +553,48 @@ authwatch/
 ├── data/
 │   ├── brute_force_auth_log.csv
 │   ├── brute_force_auth_log.json
-│   └── normal_auth_log.csv
-│
+│   ├── normal_auth_log.csv
+│   └── v3/
+│       ├── README.md
+│       ├── boundaries/
+│       ├── correlations/
+│       ├── detections/
+│       ├── false_positives/
+│       ├── invalid/
+│       ├── normal/
+│       └── zero_results/
 ├── reports/
-│
 ├── src/
+│   ├── parsers/
+│   │   ├── __init__.py
+│   │   ├── evtx_reader.py
+│   │   ├── linux_auth.py
+│   │   ├── sysmon.py
+│   │   └── windows_security.py
 │   ├── config.py
+│   ├── correlation.py
 │   ├── detector.py
 │   ├── formatter.py
+│   ├── mitre.py
+│   ├── normalizer.py
 │   ├── parser.py
-│   └── reporter.py
-│
+│   ├── reporter.py
+│   └── timeline.py
 ├── tests/
 │   ├── test_config.py
+│   ├── test_correlation.py
 │   ├── test_detector.py
 │   ├── test_formatter.py
+│   ├── test_linux_auth_parser.py
 │   ├── test_main.py
+│   ├── test_mitre.py
+│   ├── test_normalizer.py
 │   ├── test_parser.py
-│   └── test_reporter.py
-│
+│   ├── test_reporter.py
+│   ├── test_sysmon_parser.py
+│   ├── test_timeline.py
+│   ├── test_v3_datasets.py
+│   └── test_windows_security_parser.py
 ├── CHANGELOG.md
 ├── LICENSE
 ├── README.md
@@ -382,14 +607,22 @@ authwatch/
 
 | Component | Responsibility |
 |---|---|
-| `main.py` | Command-line interface, input orchestration, detection execution, and output selection |
-| `src/config.py` | Default detection settings and custom configuration validation |
-| `src/parser.py` | CSV/JSON authentication parsing, event validation, and disabled-account loading |
-| `src/detector.py` | Detection rules and multi-rule detection engine |
-| `src/formatter.py` | Human-readable formatting of rule-specific alert details |
-| `src/reporter.py` | Markdown incident reports and structured JSON alert output |
-| `tests/` | Unit and integration tests |
-| `data/` | Safe synthetic sample authentication datasets |
+| `main.py` | CLI argument handling, multi-source orchestration, detection/correlation execution, enrichment, and output selection |
+| `src/config.py` | Detection/correlation defaults and custom configuration validation |
+| `src/parser.py` | V2 CSV/JSON authentication parsing, shared validation, and disabled-account loading |
+| `src/parsers/evtx_reader.py` | Saved EVTX record iteration using `python-evtx` |
+| `src/parsers/windows_security.py` | Windows Security event parsing |
+| `src/parsers/sysmon.py` | Sysmon event parsing |
+| `src/parsers/linux_auth.py` | Linux authentication-log parsing |
+| `src/normalizer.py` | Cross-source normalization and Linux UTC timestamp normalization |
+| `src/detector.py` | Authentication detection rules and detection engine |
+| `src/correlation.py` | V3 event-correlation rules and correlation engine |
+| `src/timeline.py` | Chronological investigation timeline construction |
+| `src/mitre.py` | Evidence-based MITRE ATT&CK mapping |
+| `src/formatter.py` | Human-readable detection-detail formatting |
+| `src/reporter.py` | V2 reports plus V3 Markdown/JSON investigation reporting |
+| `tests/` | Unit, integration, CLI, regression, and scenario-dataset tests |
+| `data/v3/` | Safe reusable V3 validation scenarios |
 
 ---
 
@@ -402,346 +635,297 @@ git clone https://github.com/ahmedsaadaoui7/AuthWatch.git
 cd AuthWatch
 ```
 
-Create and activate a virtual environment:
+Create a virtual environment.
+
+Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install the project testing dependency:
+Windows PowerShell:
 
-```bash
-python3 -m pip install -r requirements.txt
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
-AuthWatch runtime functionality uses Python standard-library modules. `pytest` is included for automated testing.
+Install dependencies:
 
-The project has been developed and tested using Python 3.13.
+```bash
+python -m pip install -r requirements.txt
+```
+
+V3 EVTX support uses `python-evtx`. Automated tests use `pytest`.
+
+The current V3 development environment uses Python 3.13.
 
 ---
 
 ## Usage
 
-### Analyze suspicious CSV sample activity
+View the complete CLI:
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv
+python main.py --help
 ```
 
-Example output:
+At least one telemetry input is required.
 
-```text
-[ALERT] Potential Brute-Force Activity
-Rule ID: AUTH-BF-001
-Severity: high
-Source IP: 10.0.0.50
-Username: admin
-Failed attempts: 5
-First seen: 2026-08-08T09:00:00
-Last seen: 2026-08-08T09:00:48
-```
-
-### Analyze suspicious JSON sample activity
+### V2-Compatible Authentication Analysis
 
 ```bash
-python3 main.py data/brute_force_auth_log.json
+python main.py data/brute_force_auth_log.csv
 ```
 
-CSV and JSON inputs produce the same internal authentication-event structure before detection.
-
-### Analyze normal activity
+or:
 
 ```bash
-python3 main.py data/normal_auth_log.csv
+python main.py data/brute_force_auth_log.json
 ```
 
-Example:
-
-```text
-No suspicious authentication activity detected.
-```
-
-### Generate a Markdown incident report
+### Windows Security EVTX
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --report reports/brute_force_report.md
+python main.py --windows-security Security.evtx
 ```
 
-### Generate structured JSON alert output
+### Sysmon EVTX
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --json-output reports/alerts.json
+python main.py --sysmon Sysmon.evtx
 ```
 
-### Generate Markdown and JSON outputs together
+### Linux Authentication Log
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --report reports/brute_force_report.md \
-  --json-output reports/alerts.json
+python main.py     --linux-auth auth.log     --linux-year 2026     --linux-utc-offset +01:00
 ```
 
-### Use a custom detection configuration
-
-Create a JSON configuration file such as `detection_config.json`, then run:
+### Windows Security + Sysmon Investigation
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --config detection_config.json
+python main.py     --windows-security Security.evtx     --sysmon Sysmon.evtx     --report investigation.md     --json-output investigation.json
 ```
 
-### Supply disabled-account context
+### Mixed Windows + Sysmon + Linux Investigation
 
 ```bash
-python3 main.py data/brute_force_auth_log.csv \
-  --disabled-accounts disabled_accounts.txt
+python main.py     --windows-security Security.evtx     --sysmon Sysmon.evtx     --linux-auth auth.log     --linux-year 2026     --linux-utc-offset +01:00     --report investigation.md     --json-output investigation.json
 ```
 
-### Combine optional inputs and outputs
+### Custom Detection Configuration
 
 ```bash
-python3 main.py data/brute_force_auth_log.json \
-  --config detection_config.json \
-  --disabled-accounts disabled_accounts.txt \
-  --report reports/incident.md \
-  --json-output reports/alerts.json
+python main.py data/brute_force_auth_log.csv     --config detection_config.json
 ```
 
-### View command-line help
+### Custom Correlation Configuration
 
 ```bash
-python3 main.py --help
+python main.py     --sysmon Sysmon.evtx     --correlation-config correlation_config.json
 ```
+
+### Disabled-Account Context
+
+```bash
+python main.py data/brute_force_auth_log.csv     --disabled-accounts disabled_accounts.txt
+```
+
+### Zero Findings
+
+In V3 mode, valid telemetry may legitimately produce no detections and no correlations. AuthWatch can still generate Markdown and JSON investigation output showing that analysis completed successfully.
 
 ---
 
-## Markdown Incident Report
+## V3 Investigation Reports
 
-The Markdown reporter provides a readable SOC-style summary followed by individual alert details.
+V3 Markdown reports contain:
 
-Example:
-
-```markdown
-# AuthWatch Incident Report
-
-## Detection Summary
-
-- Total alerts: 1
-- High severity: 1
-- Medium severity: 0
-
-## Alert 1: Potential Brute-Force Activity
-
-- Rule ID: AUTH-BF-001
-- Severity: high
-- Source IP: 10.0.0.50
-- Username: admin
-- Failed attempts: 5
-- First seen: 2026-08-08T09:00:00
-- Last seen: 2026-08-08T09:00:48
+```text
+AuthWatch V3 Investigation Report
+├── Detection Summary
+├── Correlation Summary
+├── Affected Entities
+├── Related IDs
+├── MITRE ATT&CK Mappings
+├── Investigation Timeline
+├── Supporting Evidence
+├── Detections
+└── Correlations
 ```
 
-The report summary counts high- and medium-severity findings while preserving rule-specific alert details.
+Supporting evidence preserves the source-event references used by detections and correlations.
+
+For telemetry sources without a Windows/Sysmon-style Event ID, the Markdown report omits a meaningless Event-ID label while structured JSON may preserve the missing field as `null`.
+
+Authentication-only V2-compatible CLI usage continues to use the existing alert-focused reporting behavior.
 
 ---
 
-## Structured JSON Output
+## Structured V3 JSON Output
 
-The `--json-output` option writes alerts in a machine-readable structure.
+V3 JSON output contains:
 
-Example:
-
-```json
-{
-    "total_alerts": 1,
-    "alerts": [
-        {
-            "rule_id": "AUTH-BF-001",
-            "title": "Potential Brute-Force Activity",
-            "severity": "high",
-            "first_seen": "2026-08-08T09:00:00",
-            "last_seen": "2026-08-08T09:00:48",
-            "details": {
-                "source_ip": "10.0.0.50",
-                "username": "admin",
-                "failed_attempts": 5
-            }
-        }
-    ]
-}
+```text
+detection_summary
+correlation_summary
+related_ids
+affected_entities
+mitre_mappings
+supporting_evidence
+timeline
+detections
+correlations
 ```
 
-When no suspicious activity is detected, JSON output remains valid:
-
-```json
-{
-    "total_alerts": 0,
-    "alerts": []
-}
-```
-
-This makes the output suitable for later automation, ingestion, or integration work without changing the core detection logic.
+This structure distinguishes a valid zero-result investigation from invalid telemetry that could not be analyzed.
 
 ---
 
 ## Testing
 
-AuthWatch uses `pytest` for automated unit and integration testing.
+AuthWatch uses `pytest` for automated validation.
 
-Run the complete suite:
+Run the complete suite from the project virtual environment:
 
 ```bash
-pytest -v
+python -m pytest -q
 ```
 
-The V2 test suite covers areas including:
+The current V3 suite contains **250 automated tests**.
 
-- Default detection configuration
-- Valid custom configuration loading
-- Invalid configuration handling
-- Brute-force detection
-- Password-spraying detection
-- Successful-login-after-failures detection
-- Disabled-account authentication detection
-- One-IP-to-many-accounts detection
-- Many-IPs-to-one-account detection
-- Threshold behavior
-- Sliding time-window behavior
-- Exact inclusive time-window boundaries
-- Unique username/source-IP counting
-- Successful and failed authentication handling
-- Multi-rule engine integration
-- CSV authentication parsing
-- JSON authentication parsing
-- Shared event validation
-- Invalid timestamps and authentication results
-- Missing and non-string required values
-- Unsupported log-format rejection
-- Disabled-account list loading
-- Terminal alert formatting
-- Markdown report generation
-- Markdown severity summaries
-- Structured JSON report generation
-- JSON output with zero alerts
-- Simultaneous Markdown and JSON output
-- JSON input to JSON output
-- CLI missing-file handling
-- CLI malformed-input handling
+Coverage includes:
 
-Unit tests validate individual components while integration tests verify the complete command-line workflow across multiple AuthWatch modules.
+- V2 backward compatibility
+- Detection and correlation configuration
+- All six authentication detection rules
+- Exact inclusive detection boundaries
+- Windows Security parsing
+- Sysmon parsing
+- Linux authentication-log parsing
+- Cross-source normalization
+- Linux timestamp and UTC-offset validation
+- Unsupported telemetry handling
+- All five V3 correlation rules
+- Session-ID and ProcessGuid matching
+- Exact inclusive correlation boundaries
+- False-positive rejection
+- Timeline construction
+- MITRE ATT&CK mapping
+- Supporting-evidence preservation
+- Markdown and JSON investigation reporting
+- V2 and V3 CLI behavior
+- Multi-source CLI correlation
+- Missing and malformed input handling
+- Zero-finding investigations
+- Regression behavior across the complete project
+
+### V3 Scenario Dataset Library
+
+`data/v3/` contains **22 reusable synthetic validation scenarios** covering:
+
+- Normal activity
+- Every detection rule
+- Every correlation rule
+- False-positive conditions
+- Exact time-window boundaries
+- Invalid telemetry
+- Successful zero-result investigations
+
+Each dataset documents its expected behavior so automated tests can compare expected findings with actual AuthWatch results.
 
 ---
 
 ## False Positives and Analyst Validation
 
-An AuthWatch alert indicates **potential suspicious activity**, not a confirmed attack.
+An AuthWatch detection or correlation indicates activity that deserves context and investigation. It does not automatically prove an attack or compromise.
 
-A SOC analyst should investigate surrounding context before determining whether an alert is malicious.
+Potential legitimate explanations can include:
 
-### Brute Force
-
-Potential legitimate causes include:
-
-- A user repeatedly entering an incorrect password
-- Applications using stale stored credentials
+- User password mistakes
+- Stale stored credentials
 - Misconfigured services
-- Automated processes using expired credentials
-
-### Password Spraying
-
-Potential legitimate causes include:
-
 - Administrative testing
-- Authentication traffic concentrated behind NAT, proxies, VPNs, or shared gateways
-- Security testing inside an authorized lab
-- Misconfigured automation attempting several accounts
-
-### Successful Login After Repeated Failures
-
-Potential legitimate causes include:
-
-- A user eventually entering the correct password
-- Password-reset activity
-- Temporary authentication or synchronization issues
-- Legitimate troubleshooting
-
-### Disabled-Account Authentication
-
-Potential legitimate causes include:
-
-- Stale service configuration
-- Scheduled tasks using an old account
-- Delayed account deprovisioning
-- Old stored credentials that were not removed
-
-A successful authentication to an account expected to be disabled should receive particularly careful investigation.
-
-### One Source IP Accessing Multiple Accounts
-
-Potential legitimate causes include:
-
-- Shared gateways
+- Shared gateways, NAT, proxies, or VPNs
+- Authorized security testing
+- Password-reset or synchronization activity
 - Administrative jump hosts
-- Central authentication infrastructure
-- Authorized account-management or testing activity
-
-### One Account Accessed From Multiple Source IPs
-
-Potential legitimate causes include:
-
-- VPN address changes
 - Mobile or roaming users
-- Shared or distributed infrastructure
-- Proxy or network-address translation behavior
+- Legitimate privileged administration
 
-Alert thresholds should be tuned to the environment being monitored. A threshold appropriate for a small lab may be too sensitive or too permissive in a larger environment.
+Correlation is deliberately conservative.
+
+AuthWatch rejects relationships when important evidence does not match, including:
+
+- Different Windows session IDs
+- Different Sysmon ProcessGuids
+- Different Linux usernames
+- Events outside the configured correlation window
+
+Time proximity alone is not treated as sufficient evidence when a stronger identifier is available.
+
+Thresholds and correlation windows should be tuned to the environment being analyzed.
 
 ---
 
-## V2 Limitations
+## Deterministic Analysis
 
-AuthWatch V2 is intentionally focused on normalized authentication-event analysis.
+AuthWatch V3 is designed to produce deterministic results.
+
+For identical telemetry, configuration, and analysis context, AuthWatch should produce stable detection, correlation, Markdown, and JSON results.
+
+V3 validation includes repeated manual analysis confirming byte-for-byte identical Markdown and JSON output for identical input and configuration.
+
+---
+
+## V3 Limitations
+
+AuthWatch V3 intentionally remains an offline investigation tool.
 
 It does not currently provide:
 
-- Direct Windows Event Log ingestion
-- Direct Linux authentication-log ingestion
-- Sysmon ingestion or correlation
-- Endpoint or process telemetry correlation
-- Real-time monitoring
+- Automatic local log discovery
+- Automatic Windows Event Log collection
+- Automatic Linux log collection
+- Continuous or real-time monitoring
+- Background endpoint agents
 - Persistent databases
-- Dashboards
-- Threat-intelligence integration
-- Case management
-- User accounts or RBAC
-- Advanced incident correlation
+- A SOC dashboard
+- Case-management UI
+- User accounts
+- Authentication or RBAC
+- Multi-user analyst workflows
+- Threat-intelligence feeds
 - Production SIEM integration
 - Production deployment hardening
 - AI or machine-learning detection
 
-These limitations are intentional. V2 establishes a tested multi-rule detection foundation before V3 introduces more realistic security telemetry and investigation workflows.
+These boundaries are intentional. V3 focuses on building a reliable telemetry, detection, correlation, timeline, and investigation-reporting foundation before later versions add application-layer capabilities.
 
 ---
 
 ## Security and Data
 
-The repository uses only synthetic or sanitized authentication data.
+The repository uses only synthetic, sanitized, or explicitly authorized telemetry.
 
-Do not use or publish:
+Do not commit or publish:
 
 - Real credentials
 - Passwords
 - Access tokens
 - API keys
+- `.env` secrets
 - Private customer data
 - Personally identifiable authentication logs
 - Sensitive internal infrastructure information
+- Real Windows Security or Sysmon EVTX files
 - TryHackMe or Hack The Box flags, credentials, or restricted content
 - Exam questions or restricted certification material
 - Data from systems without explicit authorization
+
+Real `.evtx` files are ignored by Git through `.gitignore` and should remain local during testing.
 
 AuthWatch is intended for defensive learning, owned lab environments, sanitized datasets, and explicitly authorized security work.
 
@@ -753,13 +937,16 @@ AuthWatch development follows several project principles:
 
 - Build one version at a time
 - Prefer quality and understanding over speed
-- Keep detection logic explainable
+- Keep detection and correlation logic explainable
+- Separate observed evidence from analyst conclusions
+- Prefer strong identifiers over weak time-only relationships where available
 - Validate behavior with automated tests
+- Validate realistic scenarios with reusable synthetic datasets
 - Use meaningful Git commits and version history
 - Keep development changes local until a version is professionally complete
-- Use only safe synthetic or sanitized data
-- Document detection methodology and limitations
-- Treat false positives as an expected part of detection engineering
+- Use only safe synthetic, sanitized, or explicitly authorized data
+- Document methodology, false positives, and limitations
+- Treat correlation as supporting evidence rather than automatic proof of compromise
 - Avoid unnecessary complexity
 - Do not add AI merely for appearance or portfolio value
 
@@ -771,25 +958,31 @@ AuthWatch development follows several project principles:
 
 CSV authentication analysis, brute-force detection, terminal alerts, Markdown reporting, validation, automated tests, and the initial project architecture.
 
+**Status:** Complete.
+
 ### V2 — Multi-Rule Detection Engine
 
 Expanded authentication detections, configurable thresholds and windows, disabled-account context, CSV/JSON input, structured JSON output, improved validation, and richer reporting.
 
-### V3 — Realistic Security Log Investigation
+**Status:** Complete and released as `v2.0.0`.
 
-Windows, Linux, Sysmon, event correlation, timelines, ATT&CK mapping, and investigation workflows.
+### V3 — Endpoint Telemetry & Event Correlation
 
-### V4 — Local SOC Dashboard
+Windows Security EVTX, Sysmon EVTX, Linux authentication logs, cross-source normalization, authentication detection, event correlation, timelines, evidence-based MITRE ATT&CK mapping, supporting evidence, and professional investigation reports.
 
-Visual analysis, alert investigation, case management, and report workflows.
+**Status:** Current development version. Implementation and automated validation are complete; final release validation is in progress before `v3.0.0`.
+
+### V4 — Local SOC Dashboard + Case Management
+
+A local SOC investigation workspace built on the V3 engine, including visual alert/correlation analysis, timelines, filtering, investigation records, analyst notes, and case-management workflows.
 
 ### V5 — Secure Multi-User SOC Application
 
-Authentication, RBAC, audit logging, analyst workflows, and application security.
+Secure application authentication, accounts, RBAC, permissions, analyst workflows, audit/security controls, and multi-user operation.
 
-### V6 — Final Portfolio Edition
+### V6 — Final Professional Portfolio Edition
 
-Polished deployment, multiple telemetry sources, modular detection, investigation capabilities, documentation, and professional presentation.
+Final UX/UI polish, security hardening, refactoring where needed, performance review, deployment/setup quality, complete validation, professional architecture documentation, demonstration material, and final portfolio presentation.
 
 ---
 
@@ -801,6 +994,22 @@ See the `LICENSE` file for licensing information.
 
 ## Project Status
 
-**AuthWatch V2 — Multi-Rule Detection Engine**
+**AuthWatch V3 — Endpoint Telemetry & Event Correlation**
 
-The current version focuses on building a reliable, explainable, and testable authentication-detection foundation before expanding into realistic operating-system telemetry and broader SOC investigation workflows in V3.
+V3 implementation and automated scenario validation are complete on Kali Linux.
+
+Current validation status:
+
+```text
+Automated test suite            250/250 passing
+V3 scenario dataset suite       Complete
+Manual Linux end-to-end test    Passing
+Markdown investigation output   Passing
+Structured JSON output          Passing
+Deterministic output validation Passing
+Repository hygiene              Passing
+Documentation review            Complete
+Windows compatibility validation Pending
+```
+
+The remaining release gate is Windows compatibility validation. After that validation passes, V3 can be tagged and published as `v3.0.0`.

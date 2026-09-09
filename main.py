@@ -30,13 +30,16 @@ from src.mitre import attach_mitre_mappings
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Analyze authentication logs for suspicious authentication activity."
+        description=(
+            "Analyze authentication and endpoint telemetry for suspicious "
+            "activity and SOC investigation."
+        )
     )
 
     parser.add_argument(
         "log_file",
         nargs="?",
-         help="Optional path to a V2 authentication CSV or JSON log file.",
+        help="Optional path to a V2 authentication CSV or JSON log file.",
     )
 
     parser.add_argument(
@@ -70,17 +73,17 @@ def parse_arguments():
 
     parser.add_argument(
         "--report",
-        help="Optional path for the generated Markdown incident report.",
+        help="Optional path for the generated Markdown report.",
     )
 
     parser.add_argument(
         "--disabled-accounts",
-        help="Path to a file containing disabled account usernames",
+        help="Path to a file containing disabled account usernames.",
     )
 
     parser.add_argument(
         "--config",
-        help="Path to a JSON detection configuration file",
+        help="Path to a JSON detection configuration file.",
     )
 
     parser.add_argument(
@@ -90,7 +93,7 @@ def parse_arguments():
 
     parser.add_argument(
         "--json-output",
-        help="Optional path for the generated JSON alert output.",
+        help="Optional path for the generated JSON output.",
     )
 
     args = parser.parse_args()
