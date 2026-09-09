@@ -1,0 +1,68 @@
+{
+    "scenario_id": "DET-PS-001",
+    "description": "One source IP attempts failed authentication against five unique accounts within 60 seconds, producing password-spray and one-IP-to-many-accounts detections.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-PS-001",
+            "AUTH-MA-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T13:00:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T13:00:10Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "bob",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T13:00:20Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "carol",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T13:00:30Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "david",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T13:00:40Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "eve",
+            "source_ip": "10.0.0.60",
+            "result": "failure",
+            "details": {}
+        }
+    ]
+}

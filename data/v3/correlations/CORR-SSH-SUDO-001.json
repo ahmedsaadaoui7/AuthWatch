@@ -1,0 +1,38 @@
+{
+    "scenario_id": "CORR-SSH-SUDO-001",
+    "description": "A successful SSH login is followed by sudo execution by the same user on the same Linux host within 300 seconds.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-SSH-SUDO-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T21:00:00Z",
+            "source": "linux_auth",
+            "event_id": "sshd",
+            "event_type": "authentication_success",
+            "host": "LINUX-SERVER01",
+            "username": "alice",
+            "source_ip": "10.0.0.120",
+            "result": "success",
+            "details": {
+                "service": "sshd",
+                "authentication_method": "password"
+            }
+        },
+        {
+            "timestamp": "2026-09-06T21:01:00Z",
+            "source": "linux_auth",
+            "event_id": "sudo",
+            "event_type": "sudo_execution",
+            "host": "LINUX-SERVER01",
+            "username": "alice",
+            "command_line": "sudo systemctl status ssh",
+            "details": {
+                "target_user": "root"
+            }
+        }
+    ]
+}

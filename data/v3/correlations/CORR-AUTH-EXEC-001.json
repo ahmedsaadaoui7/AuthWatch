@@ -1,0 +1,39 @@
+{
+    "scenario_id": "CORR-AUTH-EXEC-001",
+    "description": "A successful Windows authentication followed by process creation in the same host and session.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-AUTH-EXEC-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T09:00:00Z",
+            "source": "windows_security",
+            "event_id": "4624",
+            "event_type": "authentication_success",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x3000",
+            "source_ip": "10.0.0.20",
+            "result": "success",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T09:00:20Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "session_id": "0x3000",
+            "process_name": "powershell.exe",
+            "process_id": "4500",
+            "process_guid": "{CORR-AUTH-EXEC-PROC-001}",
+            "parent_process_name": "explorer.exe",
+            "command_line": "powershell.exe",
+            "details": {}
+        }
+    ]
+}

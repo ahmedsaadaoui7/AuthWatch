@@ -1,0 +1,10 @@
+{
+    "scenario_id": "INVALID-LINUX-001",
+    "description": "A valid Linux syslog-style timestamp is provided with an invalid UTC offset. AuthWatch should reject the normalization context.",
+    "input": {
+        "timestamp": "Aug 29 17:00:00",
+        "year": 2026,
+        "utc_offset": "invalid"
+    },
+    "expected_error": "Invalid Linux timestamp or UTC offset: Aug 29 17:00:00, invalid"
+}

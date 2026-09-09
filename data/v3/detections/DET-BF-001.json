@@ -1,0 +1,67 @@
+{
+    "scenario_id": "DET-BF-001",
+    "description": "Five failed authentication attempts against the same account from the same source IP within 60 seconds.",
+    "expected": {
+        "detection_rule_ids": [
+            "AUTH-BF-001"
+        ],
+        "correlation_ids": []
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T12:00:00Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:10Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:20Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:30Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T12:00:40Z",
+            "source": "windows_security",
+            "event_id": "4625",
+            "event_type": "authentication_failure",
+            "host": "WIN-CLIENT01",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+            "details": {}
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "scenario_id": "CORR-PROC-NET-001",
+    "description": "A process creation event is followed by network activity from the same process on the same host.",
+    "expected": {
+        "detection_rule_ids": [],
+        "correlation_ids": [
+            "CORR-PROC-NET-001"
+        ]
+    },
+    "events": [
+        {
+            "timestamp": "2026-09-06T19:00:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "7200",
+            "process_guid": "{CORR-PROC-NET-PROC-001}",
+            "parent_process_name": "explorer.exe",
+            "command_line": "powershell.exe",
+            "details": {}
+        },
+        {
+            "timestamp": "2026-09-06T19:00:20Z",
+            "source": "sysmon",
+            "event_id": "3",
+            "event_type": "network_connection",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "7200",
+            "process_guid": "{CORR-PROC-NET-PROC-001}",
+            "source_ip": "10.0.0.20",
+            "destination_ip": "10.0.0.50",
+            "details": {
+                "destination_port": "443"
+            }
+        }
+    ]
+}

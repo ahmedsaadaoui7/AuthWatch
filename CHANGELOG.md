@@ -2,6 +2,60 @@
 
 All notable changes to AuthWatch are documented in this file.
 
+## [3.0.0] - 2026-09-09
+
+### Added
+
+- Windows Security EVTX ingestion for supported events `4624`, `4625`, `4648`, and `4672`
+- Sysmon EVTX ingestion for supported events `1`, `3`, `11`, `13`, and `22`
+- Linux authentication-log parsing for failed and successful SSH authentication, sudo execution, and session activity
+- Shared normalized telemetry model for Windows Security, Sysmon, Linux, and V2-compatible authentication events
+- Linux timestamp normalization to UTC using analyst-supplied year and UTC-offset context
+- `--windows-security`, `--sysmon`, and `--linux-auth` command-line telemetry inputs
+- `--linux-year` and `--linux-utc-offset` timestamp-context options
+- V3 correlation engine with five correlation rules:
+  - `CORR-AUTH-EXEC-001` authentication-to-process activity
+  - `CORR-PRIV-EXEC-001` privileged-logon-to-process activity
+  - `CORR-PROC-NET-001` process-to-network activity
+  - `CORR-PROC-DNS-001` process-to-DNS activity
+  - `CORR-SSH-SUDO-001` Linux SSH-login-to-privileged-execution activity
+- Configurable correlation windows with JSON configuration support
+- Investigation timeline reconstruction
+- Evidence-based MITRE ATT&CK mapping
+- `T1110` Brute Force mapping for `AUTH-BF-001`
+- `T1110.003` Password Spraying mapping for `AUTH-PS-001`
+- V3 Markdown investigation reports
+- Structured V3 JSON investigation reports
+- Affected-user, host, and IP-address collection
+- Supporting-evidence preservation for detections and correlations
+- Deterministic investigation output
+- Reusable V3 scenario dataset library covering normal, detection, correlation, false-positive, boundary, invalid, and zero-result cases
+- Automated Windows Security, Sysmon, Linux, normalization, correlation, timeline, MITRE, reporting, CLI, and scenario validation
+- Git protection for local `.evtx` telemetry files
+
+### Changed
+
+- Expanded AuthWatch from an authentication-only detection engine into a multi-source endpoint telemetry and SOC investigation platform
+- Integrated V2 authentication detections with the normalized V3 telemetry pipeline
+- Preserved V2 CSV/JSON authentication input and reporting compatibility
+- Improved command-line help for V3 endpoint telemetry and investigation workflows
+- Improved Linux source-event references in human-readable reports by omitting unavailable Event IDs
+- Expanded reporting from isolated alerts into structured investigation summaries containing detections, correlations, affected entities, supporting evidence, timelines, and ATT&CK context
+- Updated public documentation for the V3 architecture, telemetry sources, correlation methodology, configuration, reports, testing, limitations, security guidance, and roadmap
+
+### Validation
+
+- Complete automated suite: 250 tests passing on Kali Linux
+- Complete automated suite: 250 tests passing on Windows with Python 3.12.10
+- Manual Linux SSH-to-sudo end-to-end correlation validation
+- Deterministic Markdown and JSON output confirmed byte-for-byte for identical input and configuration
+- Real Windows Security EVTX export and end-to-end analysis validated successfully
+- Windows Markdown and JSON report generation validated
+- Windows absolute-path, backslash-path, and path-with-spaces behavior validated
+- V2 CSV backward compatibility validated on Windows
+- Repository hygiene and sensitive-data review completed
+- Real Sysmon EVTX validation was not performed because Sysmon was not installed on the Windows validation system; Sysmon parsing and correlation remain covered by automated tests
+
 ## [2.0.0] - 2026-08-19
 
 ### Added

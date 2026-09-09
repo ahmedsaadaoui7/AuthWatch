@@ -1,2 +1,5 @@
+# Runtime dependencies
+python-evtx==0.8.1
+
 # Test dependency
 pytest==9.0.3

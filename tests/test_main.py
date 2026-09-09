@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import main as authwatch_main
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -967,3 +969,865 @@ def test_cli_accepts_json_input_and_generates_json_output(tmp_path):
 
     assert content["total_alerts"] == 1
     assert content["alerts"][0]["rule_id"] == "AUTH-BF-001"
+
+
+def test_cli_missing_windows_security_file_returns_error(
+    tmp_path,
+):
+    missing_file = tmp_path / "missing_security.evtx"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "--windows-security",
+            str(missing_file),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+
+    assert (
+        f"[ERROR] Windows Security EVTX not found: "
+        f"{missing_file}"
+        in result.stderr
+    )
+
+
+def test_cli_processes_windows_security_events(
+    monkeypatch,
+    capsys,
+):
+    windows_events = [
+        {
+            "timestamp": "2026-09-05T10:00:00Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-09-05T10:00:10Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-09-05T10:00:20Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-09-05T10:00:30Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+        {
+            "timestamp": "2026-09-05T10:00:40Z",
+            "event_type": "authentication_failure",
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        },
+    ]
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_windows_security_events",
+        lambda file_path: windows_events,
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_windows_security_event",
+        lambda event: event,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--windows-security",
+            "Security.evtx",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "[ALERT] Potential Brute-Force Activity" in captured.out
+    assert "Rule ID: AUTH-BF-001" in captured.out
+
+
+def test_cli_missing_sysmon_file_returns_error(
+    tmp_path,
+):
+    missing_file = tmp_path / "missing_sysmon.evtx"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "--sysmon",
+            str(missing_file),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+
+    assert (
+        f"[ERROR] Sysmon EVTX not found: "
+        f"{missing_file}"
+        in result.stderr
+    )
+
+
+def test_cli_processes_sysmon_events(
+    monkeypatch,
+    capsys,
+):
+    raw_event = {
+        "event_id": "1",
+    }
+
+    normalized_event = {
+        "timestamp": "2026-09-05T10:00:00Z",
+        "source": "sysmon",
+        "event_id": "1",
+        "event_type": "process_creation",
+        "host": "WIN-PC01",
+        "username": "admin",
+        "process_name": "powershell.exe",
+        "process_guid": "{TEST-GUID}",
+    }
+
+    received = {}
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [raw_event],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_sysmon_event",
+        lambda event: normalized_event,
+    )
+
+    def fake_run_detection_engine(
+        events,
+        disabled_accounts=None,
+        config=None,
+    ):
+        received["events"] = events
+        return []
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        fake_run_detection_engine,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+
+    assert received["events"] == [
+        normalized_event,
+    ]
+
+    assert (
+        "No suspicious activity or correlations detected."
+        in captured.out
+    )
+
+
+def test_cli_linux_auth_requires_timestamp_context():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "--linux-auth",
+            "auth.log",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+
+    assert (
+        "--linux-auth requires "
+        "--linux-year and --linux-utc-offset"
+        in result.stderr
+    )
+
+
+def test_cli_missing_linux_auth_file_returns_error(
+    tmp_path,
+):
+    missing_file = tmp_path / "missing_auth.log"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "--linux-auth",
+            str(missing_file),
+            "--linux-year",
+            "2026",
+            "--linux-utc-offset",
+            "+01:00",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+
+    assert (
+        f"[ERROR] Linux authentication log not found: "
+        f"{missing_file}"
+        in result.stderr
+    )
+
+
+def test_cli_processes_linux_auth_events(
+    monkeypatch,
+    capsys,
+):
+    raw_event = {
+        "timestamp": "Sep 5 22:30:00",
+        "event_type": "authentication_success",
+        "host": "kali",
+        "username": "admin",
+        "source_ip": "10.0.0.8",
+        "result": "success",
+    }
+
+    normalized_event = {
+        "timestamp": "2026-09-05T21:30:00Z",
+        "source": "linux_auth",
+        "event_type": "authentication_success",
+        "host": "kali",
+        "username": "admin",
+        "source_ip": "10.0.0.8",
+        "result": "success",
+    }
+
+    received = {}
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_linux_auth_events",
+        lambda file_path: [raw_event],
+    )
+
+    def fake_normalize_linux_auth_event(
+        event,
+        *,
+        year,
+        utc_offset,
+    ):
+        received["year"] = year
+        received["utc_offset"] = utc_offset
+        return normalized_event
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_linux_auth_event",
+        fake_normalize_linux_auth_event,
+    )
+
+    def fake_run_detection_engine(
+        events,
+        disabled_accounts=None,
+        config=None,
+    ):
+        received["events"] = events
+        return []
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        fake_run_detection_engine,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--linux-auth",
+            "auth.log",
+            "--linux-year",
+            "2026",
+            "--linux-utc-offset",
+            "+01:00",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+
+    assert received["year"] == 2026
+    assert received["utc_offset"] == "+01:00"
+
+    assert received["events"] == [
+        normalized_event,
+    ]
+
+    assert (
+        "No suspicious activity or correlations detected."
+        in captured.out
+    )
+
+
+def test_cli_keeps_correlation_when_no_detections(
+    monkeypatch,
+    capsys,
+):
+    normalized_event = {
+        "timestamp": "2026-09-05T10:00:00Z",
+        "source": "sysmon",
+        "event_id": "1",
+        "event_type": "process_creation",
+        "host": "WIN-PC01",
+        "process_guid": "{TEST-GUID}",
+    }
+
+    correlation = {
+        "correlation_id": "CORR-PROC-NET-001",
+        "title": "Process to Network Activity",
+        "severity": "medium",
+        "first_seen": "2026-09-05T10:00:00Z",
+        "last_seen": "2026-09-05T10:00:10Z",
+        "details": {},
+        "related_events": [],
+    }
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [normalized_event],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_sysmon_event",
+        lambda event: event,
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        lambda events: [correlation],
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+
+    assert (
+        "No suspicious authentication activity detected."
+        not in captured.out
+    )
+
+
+def test_cli_applies_mitre_mappings_to_results(
+    monkeypatch,
+):
+    alert = {
+        "rule_id": "AUTH-BF-001",
+        "title": "Potential Brute-Force Activity",
+        "severity": "high",
+        "first_seen": "2026-09-05T10:00:00Z",
+        "last_seen": "2026-09-05T10:00:40Z",
+        "details": {},
+    }
+
+    correlation = {
+        "correlation_id": "CORR-PROC-NET-001",
+        "title": "Process to Network Activity",
+        "severity": "medium",
+        "first_seen": "2026-09-05T10:00:00Z",
+        "last_seen": "2026-09-05T10:00:10Z",
+        "details": {},
+        "related_events": [],
+    }
+
+    received = []
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [alert],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        lambda events: [correlation],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "attach_timelines_to_correlations",
+        lambda correlations: correlations,
+    )
+
+    def fake_attach_mitre_mappings(results):
+        received.append(results)
+        return results
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "attach_mitre_mappings",
+        fake_attach_mitre_mappings,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    assert result == 0
+
+    assert received == [
+        [alert],
+        [correlation],
+    ]
+
+
+def test_cli_generates_v3_markdown_report(
+    tmp_path,
+    monkeypatch,
+):
+    output_file = tmp_path / "investigation.md"
+
+    correlation = {
+        "correlation_id": "CORR-PROC-NET-001",
+        "title": "Process to Network Activity",
+        "severity": "medium",
+        "first_seen": "2026-09-05T10:00:00Z",
+        "last_seen": "2026-09-05T10:00:10Z",
+        "details": {
+            "host": "WIN-PC01",
+        },
+        "related_events": [],
+    }
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        lambda events: [correlation],
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+            "--report",
+            str(output_file),
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    assert result == 0
+    assert output_file.exists()
+
+    content = output_file.read_text(
+        encoding="utf-8"
+    )
+
+    assert "# AuthWatch V3 Investigation Report" in content
+    assert "CORR-PROC-NET-001" in content
+
+
+def test_cli_generates_v3_json_report(
+    tmp_path,
+    monkeypatch,
+):
+    output_file = tmp_path / "investigation.json"
+
+    correlation = {
+        "correlation_id": "CORR-PROC-NET-001",
+        "title": "Process to Network Activity",
+        "severity": "medium",
+        "first_seen": "2026-09-05T10:00:00Z",
+        "last_seen": "2026-09-05T10:00:10Z",
+        "details": {
+            "host": "WIN-PC01",
+        },
+        "related_events": [],
+    }
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        lambda events: [correlation],
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+            "--json-output",
+            str(output_file),
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    assert result == 0
+    assert output_file.exists()
+
+    content = json.loads(
+        output_file.read_text(encoding="utf-8")
+    )
+
+    assert content["detection_summary"]["total"] == 0
+    assert content["correlation_summary"]["total"] == 1
+
+    assert content["related_ids"]["correlation_ids"] == [
+        "CORR-PROC-NET-001",
+    ]
+
+
+def test_cli_generates_empty_v3_reports(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    markdown_file = tmp_path / "investigation.md"
+    json_file = tmp_path / "investigation.json"
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        lambda events: [],
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+            "--report",
+            str(markdown_file),
+            "--json-output",
+            str(json_file),
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+
+    assert (
+        "No suspicious activity or correlations detected."
+        in captured.out
+    )
+
+    assert markdown_file.exists()
+    assert json_file.exists()
+
+    markdown = markdown_file.read_text(
+        encoding="utf-8"
+    )
+
+    assert "# AuthWatch V3 Investigation Report" in markdown
+
+    content = json.loads(
+        json_file.read_text(encoding="utf-8")
+    )
+
+    assert content["detection_summary"]["total"] == 0
+    assert content["correlation_summary"]["total"] == 0
+    assert content["detections"] == []
+    assert content["correlations"] == []
+
+
+def test_cli_missing_correlation_config_file_returns_error(
+    tmp_path,
+):
+    missing_config = tmp_path / "missing_correlation.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "main.py",
+            "data/brute_force_auth_log.csv",
+            "--correlation-config",
+            str(missing_config),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1
+
+    assert (
+        f"[ERROR] Correlation configuration file not found: "
+        f"{missing_config}"
+        in result.stderr
+    )
+
+
+def test_cli_uses_custom_correlation_config(
+    tmp_path,
+    monkeypatch,
+):
+    config_file = tmp_path / "correlation.json"
+
+    config_file.write_text(
+        """
+{
+    "CORR-PROC-NET-001": {
+        "window_seconds": 120
+    }
+}
+""",
+        encoding="utf-8",
+    )
+
+    received = {}
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    def fake_run_correlation_engine(
+        events,
+        config=None,
+    ):
+        received["config"] = config
+        return []
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "run_correlation_engine",
+        fake_run_correlation_engine,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--sysmon",
+            "Sysmon.evtx",
+            "--correlation-config",
+            str(config_file),
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    assert result == 0
+
+    assert (
+        received["config"]["CORR-PROC-NET-001"]["window_seconds"]
+        == 120
+    )
+
+
+def test_cli_correlates_windows_authentication_with_sysmon_process(
+    monkeypatch,
+    capsys,
+):
+    windows_event = {
+        "timestamp": "2026-09-06T10:00:00Z",
+        "source": "windows_security",
+        "event_id": "4624",
+        "event_type": "authentication_success",
+        "host": "WIN-PC01",
+        "username": "admin",
+        "session_id": "0x1234",
+        "source_ip": "10.0.0.8",
+        "result": "success",
+    }
+
+    sysmon_event = {
+        "timestamp": "2026-09-06T10:00:10Z",
+        "source": "sysmon",
+        "event_id": "1",
+        "event_type": "process_creation",
+        "host": "WIN-PC01",
+        "username": "admin",
+        "session_id": "0x1234",
+        "process_name": "powershell.exe",
+        "process_id": "4321",
+        "process_guid": "{TEST-GUID}",
+    }
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_windows_security_events",
+        lambda file_path: [windows_event],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_windows_security_event",
+        lambda event: event,
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "load_sysmon_events",
+        lambda file_path: [sysmon_event],
+    )
+
+    monkeypatch.setattr(
+        authwatch_main,
+        "normalize_sysmon_event",
+        lambda event: event,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--windows-security",
+            "Security.evtx",
+            "--sysmon",
+            "Sysmon.evtx",
+        ],
+    )
+
+    result = authwatch_main.main()
+
+    captured = capsys.readouterr()
+
+    assert result == 0
+
+    assert (
+        "[CORRELATION] Authentication to Process Activity"
+        in captured.out
+    )
+
+    assert (
+        "Correlation ID: CORR-AUTH-EXEC-001"
+        in captured.out
+    )

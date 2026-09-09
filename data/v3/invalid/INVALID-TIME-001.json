@@ -1,0 +1,34 @@
+{
+    "scenario_id": "INVALID-TIME-001",
+    "description": "A matching process and network event contain an invalid timestamp. AuthWatch should reject the malformed telemetry.",
+    "expected_error": "Invalid event timestamp: not-a-valid-timestamp",
+    "events": [
+        {
+            "timestamp": "2026-09-06T23:30:00Z",
+            "source": "sysmon",
+            "event_id": "1",
+            "event_type": "process_creation",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "9500",
+            "process_guid": "{INVALID-TIME-PROC-001}",
+            "details": {}
+        },
+        {
+            "timestamp": "not-a-valid-timestamp",
+            "source": "sysmon",
+            "event_id": "3",
+            "event_type": "network_connection",
+            "host": "WIN-CLIENT01",
+            "username": "alice",
+            "process_name": "powershell.exe",
+            "process_id": "9500",
+            "process_guid": "{INVALID-TIME-PROC-001}",
+            "destination_ip": "10.0.0.50",
+            "details": {
+                "destination_port": "443"
+            }
+        }
+    ]
+}
