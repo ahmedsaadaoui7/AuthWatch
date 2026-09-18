@@ -93,6 +93,15 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 ),
                 path=request.log_file,
             ) from error
+        except ValueError as error:
+            raise AnalysisError(
+                code="AUTH_LOG_INVALID",
+                message=(
+                    "Invalid authentication log: "
+                    f"{error}"
+                ),
+                path=request.log_file,
+            ) from error
 
         events.extend(auth_events)
 
@@ -107,6 +116,15 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 message=(
                     "Windows Security EVTX not found: "
                     f"{request.windows_security}"
+                ),
+                path=request.windows_security,
+            ) from error
+        except ValueError as error:
+            raise AnalysisError(
+                code="WINDOWS_SECURITY_INVALID",
+                message=(
+                    "Invalid Windows Security telemetry: "
+                    f"{error}"
                 ),
                 path=request.windows_security,
             ) from error
@@ -132,6 +150,15 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 ),
                 path=request.sysmon,
             ) from error
+        except ValueError as error:
+            raise AnalysisError(
+                code="SYSMON_INVALID",
+                message=(
+                    "Invalid Sysmon telemetry: "
+                    f"{error}"
+                ),
+                path=request.sysmon,
+            ) from error
 
         normalized_sysmon_events = [
             normalize_sysmon_event(event)
@@ -145,6 +172,16 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
             linux_events = load_linux_auth_events(
                 request.linux_auth
             )
+
+            normalized_linux_events = [
+                normalize_linux_auth_event(
+                    event,
+                    year=request.linux_year,
+                    utc_offset=request.linux_utc_offset,
+                )
+                for event in linux_events
+            ]
+
         except FileNotFoundError as error:
             raise AnalysisError(
                 code="LINUX_AUTH_NOT_FOUND",
@@ -155,23 +192,34 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 path=request.linux_auth,
             ) from error
 
-        normalized_linux_events = [
-            normalize_linux_auth_event(
-                event,
-                year=request.linux_year,
-                utc_offset=request.linux_utc_offset,
-            )
-            for event in linux_events
-        ]
+        except ValueError as error:
+            raise AnalysisError(
+                code="LINUX_AUTH_INVALID",
+                message=(
+                    "Invalid Linux authentication telemetry: "
+                    f"{error}"
+                ),
+                path=request.linux_auth,
+            ) from error
 
         events.extend(normalized_linux_events)
 
     disabled_accounts = None
 
     if request.disabled_accounts:
-        disabled_accounts = load_disabled_accounts(
-            request.disabled_accounts
-        )
+        try:
+            disabled_accounts = load_disabled_accounts(
+                request.disabled_accounts
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="DISABLED_ACCOUNTS_NOT_FOUND",
+                message=(
+                    "Disabled accounts file not found: "
+                    f"{request.disabled_accounts}"
+                ),
+                path=request.disabled_accounts,
+            ) from error
 
     detection_config = None
 
@@ -189,6 +237,15 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 ),
                 path=request.detection_config,
             ) from error
+        except ValueError as error:
+            raise AnalysisError(
+                code="DETECTION_CONFIG_INVALID",
+                message=(
+                    "Invalid detection configuration: "
+                    f"{error}"
+                ),
+                path=request.detection_config,
+            ) from error
 
     correlation_config = None
 
@@ -203,6 +260,15 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
                 message=(
                     "Correlation configuration file not found: "
                     f"{request.correlation_config}"
+                ),
+                path=request.correlation_config,
+            ) from error
+        except ValueError as error:
+            raise AnalysisError(
+                code="CORRELATION_CONFIG_INVALID",
+                message=(
+                    "Invalid correlation configuration: "
+                    f"{error}"
                 ),
                 path=request.correlation_config,
             ) from error

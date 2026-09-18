@@ -423,3 +423,142 @@ def test_run_analysis_requires_linux_context(monkeypatch):
 
     assert error.code == "LINUX_CONTEXT_REQUIRED"
     assert error.path == "auth.log"
+
+
+def test_run_analysis_wraps_missing_disabled_accounts():
+    request = AnalysisRequest(
+        disabled_accounts="missing-disabled-accounts.txt"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "DISABLED_ACCOUNTS_NOT_FOUND"
+    assert error.path == "missing-disabled-accounts.txt"
+
+
+def test_run_analysis_wraps_invalid_auth_log(monkeypatch):
+    def raise_invalid_log(path):
+        raise ValueError("invalid authentication log structure")
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_auth_events",
+        raise_invalid_log,
+    )
+
+    request = AnalysisRequest(
+        log_file="auth.csv"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "AUTH_LOG_INVALID"
+    assert error.path == "auth.csv"
+
+
+def test_run_analysis_wraps_invalid_windows_security(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_windows_security_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Windows telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        windows_security="Security.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "WINDOWS_SECURITY_INVALID"
+    assert exc_info.value.path == "Security.evtx"
+
+
+def test_run_analysis_wraps_invalid_sysmon(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_sysmon_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Sysmon telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        sysmon="Sysmon.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "SYSMON_INVALID"
+    assert exc_info.value.path == "Sysmon.evtx"
+
+
+def test_run_analysis_wraps_invalid_linux_auth(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_linux_auth_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Linux telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        linux_auth="auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "LINUX_AUTH_INVALID"
+    assert exc_info.value.path == "auth.log"
+
+
+def test_run_analysis_wraps_invalid_detection_config(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_detection_config",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid detection config")
+        ),
+    )
+
+    request = AnalysisRequest(
+        detection_config="detection.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "DETECTION_CONFIG_INVALID"
+    assert exc_info.value.path == "detection.json"
+
+
+def test_run_analysis_wraps_invalid_correlation_config(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_correlation_config",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid correlation config")
+        ),
+    )
+
+    request = AnalysisRequest(
+        correlation_config="correlation.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "CORRELATION_CONFIG_INVALID"
+    assert exc_info.value.path == "correlation.json"
