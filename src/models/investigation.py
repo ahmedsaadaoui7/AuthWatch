@@ -1,7 +1,8 @@
+from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 
@@ -57,4 +58,9 @@ class Investigation(Base):
         Integer,
         default=0,
         nullable=False,
+    )
+
+    telemetry_sources: Mapped[list["TelemetrySource"]] = relationship(
+        back_populates="investigation",
+        cascade="all, delete-orphan",
     )
