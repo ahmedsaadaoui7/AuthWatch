@@ -1,6 +1,8 @@
 import src.analysis_engine as analysis_engine
 
+import pytest
 from src.analysis_engine import (
+    AnalysisError,
     AnalysisRequest,
     AnalysisResult,
     run_analysis,
@@ -310,3 +312,114 @@ def test_run_analysis_applies_correlation_timeline_and_mitre(
     ]
 
     assert result.correlations[0]["mitre_processed"] is True
+
+
+def test_run_analysis_wraps_missing_auth_log():
+    request = AnalysisRequest(
+        log_file="missing-auth-log.csv"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "AUTH_LOG_NOT_FOUND"
+    assert error.path == "missing-auth-log.csv"
+
+
+def test_run_analysis_wraps_missing_windows_security():
+    request = AnalysisRequest(
+        windows_security="missing-security.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "WINDOWS_SECURITY_NOT_FOUND"
+    assert error.path == "missing-security.evtx"
+
+
+def test_run_analysis_wraps_missing_sysmon():
+    request = AnalysisRequest(
+        sysmon="missing-sysmon.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "SYSMON_NOT_FOUND"
+    assert error.path == "missing-sysmon.evtx"
+
+
+def test_run_analysis_wraps_missing_linux_auth():
+    request = AnalysisRequest(
+        linux_auth="missing-auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "LINUX_AUTH_NOT_FOUND"
+    assert error.path == "missing-auth.log"
+
+
+def test_run_analysis_wraps_missing_detection_config():
+    request = AnalysisRequest(
+        detection_config="missing-detection-config.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "DETECTION_CONFIG_NOT_FOUND"
+    assert error.path == "missing-detection-config.json"
+
+
+def test_run_analysis_wraps_missing_correlation_config():
+    request = AnalysisRequest(
+        correlation_config="missing-correlation-config.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "CORRELATION_CONFIG_NOT_FOUND"
+    assert error.path == "missing-correlation-config.json"
+
+
+def test_run_analysis_requires_linux_context(monkeypatch):
+    def fail_if_called(path):
+        pytest.fail(
+            "Linux parser should not run when context is missing"
+        )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_linux_auth_events",
+        fail_if_called,
+    )
+
+    request = AnalysisRequest(
+        linux_auth="auth.log"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "LINUX_CONTEXT_REQUIRED"
+    assert error.path == "auth.log"

@@ -23,6 +23,19 @@ from src.mitre import attach_mitre_mappings
 from src.timeline import attach_timelines_to_correlations
 
 
+class AnalysisError(Exception):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        path: str | None = None,
+    ):
+        super().__init__(message)
+
+        self.code = code
+        self.path = path
+
+
 @dataclass
 class AnalysisRequest:
     log_file: str | None = None
@@ -45,6 +58,19 @@ class AnalysisResult:
 
 
 def run_analysis(request: AnalysisRequest) -> AnalysisResult:
+    if request.linux_auth and (
+        request.linux_year is None
+        or request.linux_utc_offset is None
+    ):
+        raise AnalysisError(
+            code="LINUX_CONTEXT_REQUIRED",
+            message=(
+                "Linux authentication analysis requires "
+                "both a year and UTC offset."
+            ),
+            path=request.linux_auth,
+        )
+
     events = []
 
     v3_mode = any([
@@ -54,14 +80,36 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
     ])
 
     if request.log_file:
-        events.extend(
-            load_auth_events(request.log_file)
-        )
+        try:
+            auth_events = load_auth_events(
+                request.log_file
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="AUTH_LOG_NOT_FOUND",
+                message=(
+                    "Authentication log not found: "
+                    f"{request.log_file}"
+                ),
+                path=request.log_file,
+            ) from error
+
+        events.extend(auth_events)
 
     if request.windows_security:
-        windows_events = load_windows_security_events(
-            request.windows_security
-        )
+        try:
+            windows_events = load_windows_security_events(
+                request.windows_security
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="WINDOWS_SECURITY_NOT_FOUND",
+                message=(
+                    "Windows Security EVTX not found: "
+                    f"{request.windows_security}"
+                ),
+                path=request.windows_security,
+            ) from error
 
         normalized_windows_events = [
             normalize_windows_security_event(event)
@@ -71,9 +119,19 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
         events.extend(normalized_windows_events)
 
     if request.sysmon:
-        sysmon_events = load_sysmon_events(
-            request.sysmon
-        )
+        try:
+            sysmon_events = load_sysmon_events(
+                request.sysmon
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="SYSMON_NOT_FOUND",
+                message=(
+                    "Sysmon EVTX not found: "
+                    f"{request.sysmon}"
+                ),
+                path=request.sysmon,
+            ) from error
 
         normalized_sysmon_events = [
             normalize_sysmon_event(event)
@@ -83,9 +141,19 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
         events.extend(normalized_sysmon_events)
 
     if request.linux_auth:
-        linux_events = load_linux_auth_events(
-            request.linux_auth
-        )
+        try:
+            linux_events = load_linux_auth_events(
+                request.linux_auth
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="LINUX_AUTH_NOT_FOUND",
+                message=(
+                    "Linux authentication log not found: "
+                    f"{request.linux_auth}"
+                ),
+                path=request.linux_auth,
+            ) from error
 
         normalized_linux_events = [
             normalize_linux_auth_event(
@@ -108,16 +176,36 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
     detection_config = None
 
     if request.detection_config:
-        detection_config = load_detection_config(
-            request.detection_config
-        )
+        try:
+            detection_config = load_detection_config(
+                request.detection_config
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="DETECTION_CONFIG_NOT_FOUND",
+                message=(
+                    "Detection configuration file not found: "
+                    f"{request.detection_config}"
+                ),
+                path=request.detection_config,
+            ) from error
 
     correlation_config = None
 
     if request.correlation_config:
-        correlation_config = load_correlation_config(
-            request.correlation_config
-        )
+        try:
+            correlation_config = load_correlation_config(
+                request.correlation_config
+            )
+        except FileNotFoundError as error:
+            raise AnalysisError(
+                code="CORRELATION_CONFIG_NOT_FOUND",
+                message=(
+                    "Correlation configuration file not found: "
+                    f"{request.correlation_config}"
+                ),
+                path=request.correlation_config,
+            ) from error
 
     detections = run_detection_engine(
         events,
