@@ -1,5 +1,7 @@
 # Runtime dependencies
 python-evtx==0.8.1
+SQLAlchemy==2.0.54
+Alembic==1.20.0
 
 # Test dependency
 pytest==9.0.3
