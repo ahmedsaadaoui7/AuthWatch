@@ -64,3 +64,8 @@ class Investigation(Base):
         back_populates="investigation",
         cascade="all, delete-orphan",
     )
+
+    events: Mapped[list["Event"]] = relationship(
+        back_populates="investigation",
+        cascade="all, delete-orphan",
+    )

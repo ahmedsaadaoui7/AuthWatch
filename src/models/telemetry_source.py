@@ -51,3 +51,7 @@ class TelemetrySource(Base):
     investigation: Mapped["Investigation"] = relationship(
         back_populates="telemetry_sources",
     )
+
+    events: Mapped[list["Event"]] = relationship(
+        back_populates="telemetry_source",
+    )
