@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 
 from src.models.event import Event
 
+from src.models.finding import Finding
+
 def test_investigation_can_be_stored_and_loaded(tmp_path):
     database_path = tmp_path / "authwatch.db"
 
@@ -185,3 +187,78 @@ def test_event_belongs_to_investigation_and_telemetry_source(
         assert stored_event.telemetry_source.filename == (
             "Security.evtx"
         )
+
+
+def test_findings_belong_to_investigation(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    investigation = Investigation(
+        public_id="INV-2026-0004",
+        name="Authentication Investigation",
+        status="complete",
+    )
+
+    detection = Finding(
+        finding_type="detection",
+        rule_id="AUTH-BF-001",
+        title="Potential Brute-Force Activity",
+        severity="high",
+        status="new",
+        summary="Repeated authentication failures detected.",
+        details={
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+        },
+    )
+
+    correlation = Finding(
+        finding_type="correlation",
+        rule_id="CORR-AUTH-EXEC-001",
+        title="Authentication to Process Activity",
+        severity="medium",
+        status="new",
+        summary=(
+            "Authentication activity was followed "
+            "by process execution."
+        ),
+        details={
+            "host": "WIN-CLIENT01",
+        },
+    )
+
+    investigation.findings.extend(
+        [
+            detection,
+            correlation,
+        ]
+    )
+
+    with SessionLocal() as session:
+        session.add(investigation)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored = session.execute(
+            select(Investigation).where(
+                Investigation.public_id
+                == "INV-2026-0004"
+            )
+        ).scalar_one()
+
+        assert len(stored.findings) == 2
+
+        finding_types = {
+            finding.finding_type
+            for finding in stored.findings
+        }
+
+        assert finding_types == {
+            "detection",
+            "correlation",
+        }
