@@ -129,3 +129,8 @@ class Event(Base):
     telemetry_source: Mapped["TelemetrySource"] = relationship(
         back_populates="events",
     )
+
+    finding_events: Mapped[list["FindingEvent"]] = relationship(
+        back_populates="event",
+        cascade="all, delete-orphan",
+    )

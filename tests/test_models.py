@@ -11,8 +11,8 @@ from src.models.telemetry_source import TelemetrySource
 from datetime import datetime, timezone
 
 from src.models.event import Event
-
 from src.models.finding import Finding
+from src.models.finding_event import FindingEvent
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
     database_path = tmp_path / "authwatch.db"
@@ -262,3 +262,92 @@ def test_findings_belong_to_investigation(tmp_path):
             "detection",
             "correlation",
         }
+
+
+def test_finding_can_link_to_supporting_event(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    investigation = Investigation(
+        public_id="INV-2026-0005",
+        name="Brute Force Investigation",
+        status="complete",
+    )
+
+    telemetry_source = TelemetrySource(
+        filename="Security.evtx",
+        source_type="windows_security",
+        file_size=5242880,
+        sha256="c" * 64,
+        original_path="/evidence/Security.evtx",
+    )
+
+    event = Event(
+        timestamp=datetime(
+            2026,
+            9,
+            19,
+            8,
+            0,
+            tzinfo=timezone.utc,
+        ),
+        source="windows_security",
+        event_id="4625",
+        event_type="authentication_failure",
+        host="WIN-CLIENT01",
+        username="admin",
+        source_ip="10.0.0.50",
+        result="failure",
+        details={},
+    )
+
+    finding = Finding(
+        finding_type="detection",
+        rule_id="AUTH-BF-001",
+        title="Potential Brute-Force Activity",
+        severity="high",
+        status="new",
+        summary="Repeated authentication failures detected.",
+        details={},
+    )
+
+    telemetry_source.events.append(event)
+    investigation.telemetry_sources.append(
+        telemetry_source
+    )
+    investigation.events.append(event)
+    investigation.findings.append(finding)
+
+    finding_event = FindingEvent(
+        event=event,
+    )
+
+    finding.finding_events.append(
+        finding_event
+    )
+
+    with SessionLocal() as session:
+        session.add(investigation)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored_finding = session.execute(
+            select(Finding).where(
+                Finding.rule_id == "AUTH-BF-001"
+            )
+        ).scalar_one()
+
+        assert len(stored_finding.finding_events) == 1
+
+        linked_event = (
+            stored_finding.finding_events[0].event
+        )
+
+        assert linked_event.event_id == "4625"
+        assert linked_event.username == "admin"
+        assert linked_event.source_ip == "10.0.0.50"
