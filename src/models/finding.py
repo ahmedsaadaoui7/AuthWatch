@@ -92,3 +92,8 @@ class Finding(Base):
         back_populates="finding",
         cascade="all, delete-orphan",
     )
+
+    case_findings: Mapped[list["CaseFinding"]] = relationship(
+        back_populates="finding",
+        cascade="all, delete-orphan",
+    )

@@ -14,6 +14,7 @@ from src.models.event import Event
 from src.models.finding import Finding
 from src.models.finding_event import FindingEvent
 from src.models.case import Case
+from src.models.case_finding import CaseFinding
 
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
@@ -390,3 +391,63 @@ def test_case_can_be_stored_and_loaded(tmp_path):
         assert stored.resolution is None
         assert stored.closing_note is None
         assert stored.closed_at is None
+
+
+def test_case_can_link_to_finding(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    investigation = Investigation(
+        public_id="INV-2026-0006",
+        name="Authentication Investigation",
+        status="complete",
+    )
+
+    finding = Finding(
+        finding_type="detection",
+        rule_id="AUTH-BF-001",
+        title="Potential Brute-Force Activity",
+        severity="high",
+        status="new",
+        summary="Repeated authentication failures detected.",
+        details={},
+    )
+
+    investigation.findings.append(finding)
+
+    case = Case(
+        public_id="AW-0002",
+        title="Investigate brute-force activity",
+        priority="high",
+        status="open",
+    )
+
+    case_finding = CaseFinding(
+        finding=finding,
+    )
+
+    case.case_findings.append(case_finding)
+
+    with SessionLocal() as session:
+        session.add(investigation)
+        session.add(case)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored_case = session.execute(
+            select(Case).where(
+                Case.public_id == "AW-0002"
+            )
+        ).scalar_one()
+
+        assert len(stored_case.case_findings) == 1
+
+        linked_finding = stored_case.case_findings[0].finding
+
+        assert linked_finding.rule_id == "AUTH-BF-001"
+        assert linked_finding.severity == "high"
