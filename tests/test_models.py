@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from src.models.event import Event
 from src.models.finding import Finding
 from src.models.finding_event import FindingEvent
+from src.models.case import Case
+
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
     database_path = tmp_path / "authwatch.db"
@@ -351,3 +353,40 @@ def test_finding_can_link_to_supporting_event(tmp_path):
         assert linked_event.event_id == "4625"
         assert linked_event.username == "admin"
         assert linked_event.source_ip == "10.0.0.50"
+
+
+def test_case_can_be_stored_and_loaded(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    case = Case(
+        public_id="AW-0001",
+        title="Investigate repeated admin login failures",
+        priority="high",
+        status="open",
+    )
+
+    with SessionLocal() as session:
+        session.add(case)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored = session.execute(
+            select(Case).where(
+                Case.public_id == "AW-0001"
+            )
+        ).scalar_one()
+
+        assert stored.title == (
+            "Investigate repeated admin login failures"
+        )
+        assert stored.priority == "high"
+        assert stored.status == "open"
+        assert stored.resolution is None
+        assert stored.closing_note is None
+        assert stored.closed_at is None
