@@ -16,6 +16,7 @@ from src.models.finding_event import FindingEvent
 from src.models.case import Case
 from src.models.case_finding import CaseFinding
 from src.models.case_note import CaseNote
+from src.models.case_activity import CaseActivity
 
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
@@ -499,3 +500,57 @@ def test_case_can_store_analyst_notes(tmp_path):
             "related to the admin account."
         )
         assert stored_note.created_at is not None
+
+
+def test_case_can_store_activity_history(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    case = Case(
+        public_id="AW-0004",
+        title="Investigate suspicious authentication",
+        priority="high",
+        status="investigating",
+    )
+
+    activity = CaseActivity(
+        activity_type="status_changed",
+        description=(
+            "Case status changed from open "
+            "to investigating."
+        ),
+        details={
+            "old_status": "open",
+            "new_status": "investigating",
+        },
+    )
+
+    case.activities.append(activity)
+
+    with SessionLocal() as session:
+        session.add(case)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored_case = session.execute(
+            select(Case).where(
+                Case.public_id == "AW-0004"
+            )
+        ).scalar_one()
+
+        assert len(stored_case.activities) == 1
+
+        stored_activity = stored_case.activities[0]
+
+        assert stored_activity.activity_type == "status_changed"
+        assert stored_activity.details["old_status"] == "open"
+        assert (
+            stored_activity.details["new_status"]
+            == "investigating"
+        )
+        assert stored_activity.created_at is not None
