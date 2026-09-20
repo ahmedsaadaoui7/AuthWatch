@@ -17,6 +17,7 @@ from src.models.case import Case
 from src.models.case_finding import CaseFinding
 from src.models.case_note import CaseNote
 from src.models.case_activity import CaseActivity
+from src.models.application_setting import ApplicationSetting
 
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
@@ -554,3 +555,45 @@ def test_case_can_store_activity_history(tmp_path):
             == "investigating"
         )
         assert stored_activity.created_at is not None
+
+
+def test_application_setting_can_be_stored_and_updated(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    setting = ApplicationSetting(
+        key="dashboard_time_range",
+        value="24h",
+    )
+
+    with SessionLocal() as session:
+        session.add(setting)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored = session.execute(
+            select(ApplicationSetting).where(
+                ApplicationSetting.key
+                == "dashboard_time_range"
+            )
+        ).scalar_one()
+
+        assert stored.value == "24h"
+
+        stored.value = "7d"
+        session.commit()
+
+    with SessionLocal() as session:
+        updated = session.execute(
+            select(ApplicationSetting).where(
+                ApplicationSetting.key
+                == "dashboard_time_range"
+            )
+        ).scalar_one()
+
+        assert updated.value == "7d"
