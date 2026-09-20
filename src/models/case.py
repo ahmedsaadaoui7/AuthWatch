@@ -62,3 +62,8 @@ class Case(Base):
         back_populates="case",
         cascade="all, delete-orphan",
     )
+
+    notes: Mapped[list["CaseNote"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+    )

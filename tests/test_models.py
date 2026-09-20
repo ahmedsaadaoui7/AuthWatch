@@ -15,6 +15,7 @@ from src.models.finding import Finding
 from src.models.finding_event import FindingEvent
 from src.models.case import Case
 from src.models.case_finding import CaseFinding
+from src.models.case_note import CaseNote
 
 
 def test_investigation_can_be_stored_and_loaded(tmp_path):
@@ -451,3 +452,50 @@ def test_case_can_link_to_finding(tmp_path):
 
         assert linked_finding.rule_id == "AUTH-BF-001"
         assert linked_finding.severity == "high"
+
+
+def test_case_can_store_analyst_notes(tmp_path):
+    database_path = tmp_path / "authwatch.db"
+
+    engine = create_database_engine(database_path)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    case = Case(
+        public_id="AW-0003",
+        title="Investigate admin authentication activity",
+        priority="high",
+        status="investigating",
+    )
+
+    note = CaseNote(
+        content=(
+            "Repeated authentication failures appear "
+            "related to the admin account."
+        ),
+    )
+
+    case.notes.append(note)
+
+    with SessionLocal() as session:
+        session.add(case)
+        session.commit()
+
+    with SessionLocal() as session:
+        stored_case = session.execute(
+            select(Case).where(
+                Case.public_id == "AW-0003"
+            )
+        ).scalar_one()
+
+        assert len(stored_case.notes) == 1
+
+        stored_note = stored_case.notes[0]
+
+        assert stored_note.content == (
+            "Repeated authentication failures appear "
+            "related to the admin account."
+        )
+        assert stored_note.created_at is not None
