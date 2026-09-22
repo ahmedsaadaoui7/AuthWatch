@@ -1,7 +1,12 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from src.models.case import Case
+from src.models.case_finding import CaseFinding
+
+from src.models.finding import Finding
 from src.models.investigation import Investigation
+from src.models.event import Event
 
 
 class InvestigationRepository:
@@ -112,6 +117,69 @@ class InvestigationRepository:
                 )
             )
             .order_by(Investigation.id)
+        )
+
+        return list(
+            self.session.execute(statement).scalars().all()
+        )
+
+    def list_events(
+        self,
+        investigation_id: int,
+    ) -> list[Event]:
+        statement = (
+            select(Event)
+            .where(
+                Event.investigation_id
+                == investigation_id
+            )
+            .order_by(
+                Event.timestamp,
+                Event.id,
+            )
+        )
+
+        return list(
+            self.session.execute(statement).scalars().all()
+        )
+
+    def list_findings(
+        self,
+        investigation_id: int,
+    ) -> list[Finding]:
+        statement = (
+            select(Finding)
+            .where(
+                Finding.investigation_id
+                == investigation_id
+            )
+            .order_by(Finding.id)
+        )
+
+        return list(
+            self.session.execute(statement).scalars().all()
+        )
+
+    def list_related_cases(
+        self,
+        investigation_id: int,
+    ) -> list[Case]:
+        statement = (
+            select(Case)
+            .join(
+                CaseFinding,
+                CaseFinding.case_id == Case.id,
+            )
+            .join(
+                Finding,
+                Finding.id == CaseFinding.finding_id,
+            )
+            .where(
+                Finding.investigation_id
+                == investigation_id
+            )
+            .distinct()
+            .order_by(Case.id)
         )
 
         return list(
