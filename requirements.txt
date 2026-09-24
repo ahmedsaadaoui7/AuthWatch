@@ -2,6 +2,7 @@
 python-evtx==0.8.1
 SQLAlchemy==2.0.54
 Alembic==1.20.0
+PySide6==6.11.2
 
 # Test dependency
 pytest==9.0.3
