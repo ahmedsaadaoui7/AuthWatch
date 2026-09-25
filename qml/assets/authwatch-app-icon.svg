@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#07131F"/><stop offset="1" stop-color="#0B1D2A"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#72F4FF"/><stop offset=".5" stop-color="#21D7E8"/><stop offset="1" stop-color="#0A8EA6"/></linearGradient>
+    <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#B8D0DD"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="18" y="18" width="476" height="476" rx="112" fill="url(#bg)" stroke="#16435A" stroke-width="5"/>
+  <g transform="translate(56 56) scale(.78)" fill="none" stroke-linecap="round">
+    <circle cx="256" cy="256" r="176" stroke="#133348" stroke-width="9"/>
+    <path d="M124 256a132 132 0 0 1 226-93" stroke="url(#cyan)" stroke-width="16" filter="url(#glow)"/>
+    <path d="M370 190a132 132 0 0 1-27 167" stroke="#0D5D72" stroke-width="12"/>
+    <circle cx="256" cy="256" r="109" stroke="#1B566A" stroke-width="5" opacity=".85"/>
+    <circle cx="256" cy="256" r="74" stroke="#2B7C8D" stroke-width="5" opacity=".8"/>
+    <line x1="256" y1="48" x2="256" y2="104" stroke="#42E6F2" stroke-width="8"/>
+    <line x1="256" y1="408" x2="256" y2="464" stroke="#42E6F2" stroke-width="8"/>
+    <line x1="48" y1="256" x2="104" y2="256" stroke="#42E6F2" stroke-width="8"/>
+    <line x1="408" y1="256" x2="464" y2="256" stroke="#42E6F2" stroke-width="8"/>
+    <path d="M256 256 L357 129 A165 165 0 0 0 256 92 Z" fill="url(#cyan)" opacity=".26" stroke="none"/>
+    <line x1="256" y1="256" x2="354" y2="132" stroke="#4DEAF3" stroke-width="5" opacity=".88"/>
+    <circle cx="354" cy="132" r="16" fill="#E9FEFF" stroke="#52EBF3" stroke-width="6" filter="url(#glow)"/>
+    <circle cx="153" cy="184" r="11" fill="#55E8F1" filter="url(#glow)"/>
+    <circle cx="357" cy="339" r="12" fill="#34DBE9" filter="url(#glow)"/>
+  </g>
+  <g transform="translate(56 56) scale(.78)" filter="url(#glow)">
+    <circle cx="256" cy="256" r="58" fill="#07131F" stroke="#234A5E" stroke-width="8"/>
+    <circle cx="256" cy="238" r="19" fill="url(#ice)"/>
+    <path d="M244 254h24l10 48h-44z" fill="url(#ice)"/>
+  </g>
+</svg>
