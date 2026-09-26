@@ -256,7 +256,7 @@ ApplicationWindow {
 
                     AnalyzePage {
                         onAnalysisRequested: function(payload) {
-                            globalToast.show("Analysis UI is ready. The next core step is connecting the AnalysisViewModel/background worker to this request.", "info")
+                            analysisViewModel.startAnalysis(payload)
                         }
                     }
 
@@ -295,6 +295,29 @@ ApplicationWindow {
                 anchors.bottomMargin: 22
                 z: 100
             }
+
+            Connections {
+                target: analysisViewModel
+
+                function onErrorChanged() {
+                    if (analysisViewModel.errorMessage !== "") {
+                        globalToast.show(
+                            analysisViewModel.errorMessage,
+                            "error"
+                        )
+                    }
+                }
+
+                function onAnalysisCompleted() {
+                    globalToast.show(
+                        analysisViewModel.statusMessage,
+                        "success"
+                    )
+
+                    dashboardViewModel.loadDashboard()
+                }
+            }
+
         }
     }
 }
