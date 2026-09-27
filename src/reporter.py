@@ -172,25 +172,41 @@ def collect_supporting_evidence(alerts, correlations):
     }
 
 
-def collect_investigation_timeline(correlations):
+def collect_investigation_timeline(
+    correlations,
+    events=None,
+):
     unique_events = {}
 
-    for correlation in correlations:
-        for event in correlation.get("related_events", []):
-            fingerprint = json.dumps(
-                event,
-                sort_keys=True,
-                separators=(",", ":"),
-            )
+    def add_event(event):
+        fingerprint = json.dumps(
+            event,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
 
-            unique_events[fingerprint] = event
+        unique_events[fingerprint] = event
+
+    for event in events or []:
+        add_event(event)
+
+    for correlation in correlations:
+        for event in correlation.get(
+            "related_events",
+            [],
+        ):
+            add_event(event)
 
     return build_timeline(
         unique_events.values()
     )
 
 
-def build_investigation_report(alerts, correlations):
+def build_investigation_report(
+    alerts,
+    correlations,
+    events=None,
+):
     high_severity_alerts = sum(
         1 for alert in alerts
         if alert["severity"] == "high"
@@ -235,6 +251,7 @@ def build_investigation_report(alerts, correlations):
 
     investigation_timeline = collect_investigation_timeline(
         correlations,
+        events=events,
     )
 
     supporting_evidence = collect_supporting_evidence(
@@ -270,6 +287,7 @@ def generate_investigation_json_report(
     alerts,
     correlations,
     output_path,
+    events=None,
 ):
     output_path = Path(output_path)
     output_path.parent.mkdir(
@@ -280,6 +298,7 @@ def generate_investigation_json_report(
     report = build_investigation_report(
         alerts,
         correlations,
+        events=events,
     )
 
     output_path.write_text(
@@ -294,6 +313,7 @@ def generate_investigation_markdown_report(
     alerts,
     correlations,
     output_path,
+    events=None,
 ):
     output_path = Path(output_path)
 
@@ -305,6 +325,7 @@ def generate_investigation_markdown_report(
     report = build_investigation_report(
         alerts,
         correlations,
+        events=events,
     )
 
     detection_summary = report["detection_summary"]

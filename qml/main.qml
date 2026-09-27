@@ -442,13 +442,6 @@ ApplicationWindow {
 
                         onAnalyzeRequested:
                             root.navigate(1)
-
-                        onExportRequested: function(investigation) {
-                            globalToast.show(
-                                "Investigation export will be connected next.",
-                                "info"
-                            )
-                        }
                     }
 
                     CasesPage {
@@ -513,6 +506,13 @@ ApplicationWindow {
                             "error"
                         )
                     }
+                }
+
+                function onExportCompleted(outputPath) {
+                    globalToast.show(
+                        "Investigation exported successfully.",
+                        "success"
+                    )
                 }
             }
         }

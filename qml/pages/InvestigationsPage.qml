@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../components"
 
 Item {
@@ -21,6 +22,31 @@ Item {
 
     signal analyzeRequested()
     signal exportRequested(var investigation)
+
+    FileDialog {
+        id: exportDialog
+
+        title: "Export AuthWatch Investigation"
+
+        fileMode: FileDialog.SaveFile
+
+        nameFilters: [
+            "Markdown report (*.md)",
+            "JSON report (*.json)"
+        ]
+
+        onAccepted: {
+            if (
+                root.viewModel
+                && root.selectedInvestigation
+            ) {
+                root.viewModel.exportInvestigation(
+                    root.selectedInvestigation.id,
+                    selectedFile.toString()
+                )
+            }
+        }
+    }
 
     Component.onCompleted: {
         if (root.viewModel) {
@@ -369,9 +395,9 @@ Item {
                             SecondaryButton {
                                 text: "Export investigation"
 
-                                onClicked: root.exportRequested(
-                                               root.selectedInvestigation
-                                           )
+                                onClicked: {
+                                    exportDialog.open()
+                                }
                             }
                         }
                     }

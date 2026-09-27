@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 from src.viewmodels.investigation_viewmodel import (
@@ -341,3 +342,123 @@ def test_investigation_viewmodel_clears_selection():
 
     assert viewmodel.hasSelection is False
     assert viewmodel.selectedInvestigation == {}
+
+
+def test_investigation_viewmodel_normalizes_export_file_url():
+    class FakeService:
+        pass
+
+    viewmodel = InvestigationViewModel(
+        FakeService()
+    )
+
+    result = viewmodel._normalize_output_path(
+        "file:///tmp/investigation.json"
+    )
+
+    assert result == "/tmp/investigation.json"
+
+
+def test_investigation_viewmodel_exports_json():
+    calls = []
+
+    class FakeService:
+        def export_investigation(
+            self,
+            *,
+            investigation_id,
+            export_format,
+            output_path,
+        ):
+            calls.append({
+                "investigation_id": investigation_id,
+                "export_format": export_format,
+                "output_path": output_path,
+            })
+
+            return output_path
+
+    viewmodel = InvestigationViewModel(
+        FakeService()
+    )
+
+    completed = []
+
+    viewmodel.exportCompleted.connect(
+        completed.append
+    )
+
+    viewmodel.exportInvestigation(
+        1,
+        "/tmp/investigation.json",
+    )
+
+    assert viewmodel.errorMessage == ""
+
+    assert calls == [{
+        "investigation_id": 1,
+        "export_format": "json",
+        "output_path": Path(
+            "/tmp/investigation.json"
+        ),
+    }]
+
+    assert completed == [
+        "/tmp/investigation.json"
+    ]
+
+
+def test_investigation_viewmodel_exports_markdown():
+    calls = []
+
+    class FakeService:
+        def export_investigation(
+            self,
+            *,
+            investigation_id,
+            export_format,
+            output_path,
+        ):
+            calls.append({
+                "investigation_id": investigation_id,
+                "export_format": export_format,
+                "output_path": output_path,
+            })
+
+            return output_path
+
+    viewmodel = InvestigationViewModel(
+        FakeService()
+    )
+
+    viewmodel.exportInvestigation(
+        1,
+        "/tmp/investigation.md",
+    )
+
+    assert viewmodel.errorMessage == ""
+
+    assert calls[0]["export_format"] == (
+        "markdown"
+    )
+
+
+def test_investigation_viewmodel_rejects_unknown_export_extension():
+    class FakeService:
+        def export_investigation(self, **kwargs):
+            raise AssertionError(
+                "Service should not be called."
+            )
+
+    viewmodel = InvestigationViewModel(
+        FakeService()
+    )
+
+    viewmodel.exportInvestigation(
+        1,
+        "/tmp/investigation.txt",
+    )
+
+    assert viewmodel.errorMessage == (
+        "Export file must use .json or .md."
+    )

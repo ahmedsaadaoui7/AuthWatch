@@ -232,3 +232,39 @@ class InvestigationService:
         raise ValueError(
             "Unsupported investigation export format."
         )
+
+    def export_investigation(self,*,investigation_id: int,export_format: str,output_path,) -> Path:
+        self.get_investigation(investigation_id)
+
+        alerts, correlations = self._build_report_inputs(
+            investigation_id=investigation_id,
+        )
+
+        investigation_events = self.load_timeline(
+            investigation_id=investigation_id,
+        )
+
+        report_events = [
+            self._event_to_report_dict(event)
+            for event in investigation_events
+        ]
+
+        if export_format == "json":
+            return generate_investigation_json_report(
+                alerts,
+                correlations,
+                output_path,
+                events=report_events,
+            )
+
+        if export_format == "markdown":
+            return generate_investigation_markdown_report(
+                alerts,
+                correlations,
+                output_path,
+                events=report_events,
+            )
+
+        raise ValueError(
+            "Unsupported investigation export format."
+        )

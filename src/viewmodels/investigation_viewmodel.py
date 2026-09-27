@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import (
     QObject,
     Property,
+    QUrl,
     Signal,
     Slot,
 )
@@ -17,6 +20,8 @@ class InvestigationViewModel(QObject):
     selectionChanged = Signal()
     loadingChanged = Signal()
     errorChanged = Signal()
+
+    exportCompleted = Signal(str)
 
     def __init__(
         self,
@@ -315,3 +320,64 @@ class InvestigationViewModel(QObject):
 
         self._selected_investigation = {}
         self.selectionChanged.emit()
+
+    @staticmethod
+    def _normalize_output_path(value: str) -> str:
+        text = str(value or "").strip()
+
+        if not text:
+            raise ValueError(
+                "Export path is required."
+            )
+
+        url = QUrl(text)
+
+        if url.isLocalFile():
+            return url.toLocalFile()
+
+        return text
+
+    @Slot(int, str)
+    def exportInvestigation(
+        self,
+        investigation_id: int,
+        output_path: str,
+    ) -> None:
+        self._set_error("")
+
+        try:
+            normalized_path = (
+                self._normalize_output_path(
+                    output_path
+                )
+            )
+
+            path = Path(normalized_path)
+
+            suffix = path.suffix.lower()
+
+            if suffix == ".json":
+                export_format = "json"
+
+            elif suffix in {".md", ".markdown"}:
+                export_format = "markdown"
+
+            else:
+                raise ValueError(
+                    "Export file must use .json or .md."
+                )
+
+            result_path = (
+                self._service.export_investigation(
+                    investigation_id=investigation_id,
+                    export_format=export_format,
+                    output_path=path,
+                )
+            )
+
+            self.exportCompleted.emit(
+                str(result_path)
+            )
+
+        except Exception as error:
+            self._set_error(str(error))
