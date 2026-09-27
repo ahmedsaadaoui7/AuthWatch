@@ -11,6 +11,7 @@ ApplicationWindow {
     height: 960
     minimumWidth: 1240
     minimumHeight: 760
+
     visible: true
     title: "AuthWatch — Security Operations"
     color: "#06111D"
@@ -18,7 +19,9 @@ ApplicationWindow {
     property int currentPage: 0
     property date currentDateTime: new Date()
 
-    BrandTheme { id: theme }
+    BrandTheme {
+        id: theme
+    }
 
     readonly property var navigationItems: [
         { label: "Dashboard", code: "DB" },
@@ -31,19 +34,31 @@ ApplicationWindow {
 
     function navigate(index) {
         currentPage = index
-        if (index === 0 && dashboardViewModel)
+
+        if (index === 0 && dashboardViewModel) {
             dashboardViewModel.loadDashboard()
+        }
+
+        if (index === 3 && investigationViewModel) {
+            investigationViewModel.loadInvestigations()
+        }
     }
 
     Component.onCompleted: {
-        if (dashboardViewModel)
+        if (dashboardViewModel) {
             dashboardViewModel.loadDashboard()
+        }
+
+        if (investigationViewModel) {
+            investigationViewModel.loadInvestigations()
+        }
     }
 
     Timer {
         interval: 1000
         running: true
         repeat: true
+
         onTriggered: root.currentDateTime = new Date()
     }
 
@@ -54,48 +69,84 @@ ApplicationWindow {
         Rectangle {
             Layout.preferredWidth: 270
             Layout.fillHeight: true
+
             color: theme.sidebar
+
             border.width: 1
             border.color: theme.border
 
             ColumnLayout {
                 anchors.fill: parent
+
                 anchors.leftMargin: 14
                 anchors.rightMargin: 14
                 anchors.topMargin: 14
                 anchors.bottomMargin: 14
+
                 spacing: 8
 
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 82
+
                     radius: 14
                     color: "#081A27"
+
                     border.width: 1
                     border.color: theme.border
 
                     RowLayout {
                         anchors.fill: parent
+
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
+
                         spacing: 12
 
                         Rectangle {
                             Layout.preferredWidth: 54
                             Layout.preferredHeight: 54
+
                             radius: 14
                             color: "#06131F"
+
                             border.width: 1
                             border.color: theme.borderStrong
-                            LogoMark { anchors.centerIn: parent; preferredSize: 48 }
+
+                            LogoMark {
+                                anchors.centerIn: parent
+                                preferredSize: 48
+                            }
                         }
 
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 3
-                            Text { text: "AUTHWATCH"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true; font.letterSpacing: 0.8 }
-                            Text { text: "SECURITY OPERATIONS"; color: theme.primary; font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.9 }
-                            Text { text: "LOCAL SOC · V4"; color: theme.textMuted; font.pixelSize: 10 }
+
+                            Text {
+                                text: "AUTHWATCH"
+                                color: theme.textPrimary
+
+                                font.pixelSize: 16
+                                font.bold: true
+                                font.letterSpacing: 0.8
+                            }
+
+                            Text {
+                                text: "SECURITY OPERATIONS"
+                                color: theme.primary
+
+                                font.pixelSize: 10
+                                font.bold: true
+                                font.letterSpacing: 0.9
+                            }
+
+                            Text {
+                                text: "LOCAL SOC · V4"
+                                color: theme.textMuted
+
+                                font.pixelSize: 10
+                            }
                         }
                     }
                 }
@@ -105,8 +156,10 @@ ApplicationWindow {
                     Layout.leftMargin: 8
                     Layout.topMargin: 8
                     Layout.bottomMargin: 2
+
                     text: "OPERATIONS"
                     color: theme.textMuted
+
                     font.pixelSize: 10
                     font.bold: true
                     font.letterSpacing: 0.8
@@ -114,50 +167,93 @@ ApplicationWindow {
 
                 Repeater {
                     model: root.navigationItems
+
                     delegate: SidebarItem {
                         required property var modelData
                         required property int index
+
                         text: modelData.label
                         shortCode: modelData.code
+
                         active: root.currentPage === index
+
                         onClicked: root.navigate(index)
                     }
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                }
 
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 102
+
                     radius: 12
                     color: "#081A27"
+
                     border.width: 1
                     border.color: theme.border
 
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 12
+
                         spacing: 6
 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            Rectangle { Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4; color: theme.success }
-                            Text { text: "SYSTEM ACTIVE"; color: theme.success; font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.4 }
-                            Item { Layout.fillWidth: true }
+
+                            Rectangle {
+                                Layout.preferredWidth: 8
+                                Layout.preferredHeight: 8
+
+                                radius: 4
+                                color: theme.success
+                            }
+
+                            Text {
+                                text: "SYSTEM ACTIVE"
+                                color: theme.success
+
+                                font.pixelSize: 10
+                                font.bold: true
+                                font.letterSpacing: 0.4
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                            }
                         }
 
-                        Text { text: "Local SQLite database"; color: theme.textSecondary; font.pixelSize: 11 }
-                        Text { text: "AuthWatch V3 engine"; color: theme.textMuted; font.pixelSize: 11 }
-                        Text { text: "Offline-first workflow"; color: theme.textMuted; font.pixelSize: 11 }
+                        Text {
+                            text: "Local SQLite database"
+                            color: theme.textSecondary
+                            font.pixelSize: 11
+                        }
+
+                        Text {
+                            text: "AuthWatch V3 engine"
+                            color: theme.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        Text {
+                            text: "Offline-first workflow"
+                            color: theme.textMuted
+                            font.pixelSize: 11
+                        }
                     }
                 }
 
                 Text {
                     Layout.fillWidth: true
                     Layout.leftMargin: 6
+
                     text: "AuthWatch V4 · Local build"
                     color: theme.textDim
+
                     font.pixelSize: 10
                 }
             }
@@ -166,6 +262,7 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
             color: theme.background
 
             ColumnLayout {
@@ -175,67 +272,117 @@ ApplicationWindow {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 60
+
                     color: theme.topbar
+
                     border.width: 1
                     border.color: theme.border
 
                     RowLayout {
                         anchors.fill: parent
+
                         anchors.leftMargin: 22
                         anchors.rightMargin: 22
+
                         spacing: 12
 
                         Text {
                             text: root.navigationItems[root.currentPage].label
                             color: theme.textPrimary
+
                             font.pixelSize: 14
                             font.bold: true
                         }
 
-                        Text { text: "·"; color: theme.textDim; font.pixelSize: 14 }
+                        Text {
+                            text: "·"
+                            color: theme.textDim
+                            font.pixelSize: 14
+                        }
 
                         Text {
                             text: "AUTHENTICATION RADAR"
                             color: theme.textMuted
+
                             font.pixelSize: 10
                             font.bold: true
                             font.letterSpacing: 0.7
                         }
 
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
 
                         Rectangle {
                             Layout.preferredWidth: 112
                             Layout.preferredHeight: 32
+
                             radius: 9
                             color: "#0C2529"
+
                             border.width: 1
                             border.color: "#1A5D5F"
+
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
-                                Rectangle { Layout.preferredWidth: 7; Layout.preferredHeight: 7; radius: 4; color: theme.success }
-                                Text { text: "LOCAL MODE"; color: theme.success; font.pixelSize: 10; font.bold: true }
+
+                                Rectangle {
+                                    Layout.preferredWidth: 7
+                                    Layout.preferredHeight: 7
+
+                                    radius: 4
+                                    color: theme.success
+                                }
+
+                                Text {
+                                    text: "LOCAL MODE"
+                                    color: theme.success
+
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
                             }
                         }
 
                         Rectangle {
                             Layout.preferredWidth: 108
                             Layout.preferredHeight: 32
+
                             radius: 9
                             color: "#0C2130"
+
                             border.width: 1
                             border.color: theme.borderStrong
+
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
-                                Rectangle { Layout.preferredWidth: 7; Layout.preferredHeight: 7; radius: 4; color: theme.primary }
-                                Text { text: "V3 ENGINE"; color: theme.primaryBright; font.pixelSize: 10; font.bold: true }
+
+                                Rectangle {
+                                    Layout.preferredWidth: 7
+                                    Layout.preferredHeight: 7
+
+                                    radius: 4
+                                    color: theme.primary
+                                }
+
+                                Text {
+                                    text: "V3 ENGINE"
+                                    color: theme.primaryBright
+
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
                             }
                         }
 
                         Text {
-                            text: Qt.formatDateTime(root.currentDateTime, "ddd, dd MMM · HH:mm:ss")
+                            text: Qt.formatDateTime(
+                                      root.currentDateTime,
+                                      "ddd, dd MMM · HH:mm:ss"
+                                  )
+
                             color: theme.textSecondary
                             font.pixelSize: 11
                         }
@@ -245,54 +392,86 @@ ApplicationWindow {
                 StackLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+
                     currentIndex: root.currentPage
 
                     DashboardPage {
                         viewModel: dashboardViewModel
-                        onOpenAnalyzeRequested: root.navigate(1)
-                        onOpenFindingsRequested: root.navigate(2)
-                        onOpenCasesRequested: root.navigate(4)
+
+                        onOpenAnalyzeRequested:
+                            root.navigate(1)
+
+                        onOpenFindingsRequested:
+                            root.navigate(2)
+
+                        onOpenCasesRequested:
+                            root.navigate(4)
                     }
 
                     AnalyzePage {
                         onAnalysisRequested: function(payload) {
-                            analysisViewModel.startAnalysis(payload)
+                            analysisViewModel.startAnalysis(
+                                payload
+                            )
                         }
                     }
 
                     FindingsPage {
                         viewModel: dashboardViewModel
-                        onOpenAnalyzeRequested: root.navigate(1)
+
+                        onOpenAnalyzeRequested:
+                            root.navigate(1)
+
                         onMarkReviewedRequested: function(finding) {
-                            globalToast.show("Finding review action is ready for FindingViewModel wiring.", "info")
+                            globalToast.show(
+                                "Finding review action is ready for FindingViewModel wiring.",
+                                "info"
+                            )
                         }
+
                         onEscalateRequested: function(finding) {
-                            globalToast.show("Case escalation UI is ready for FindingViewModel/CaseService wiring.", "info")
+                            globalToast.show(
+                                "Case escalation UI is ready for FindingViewModel/CaseService wiring.",
+                                "info"
+                            )
                         }
                     }
 
                     InvestigationsPage {
-                        onAnalyzeRequested: root.navigate(1)
+                        viewModel: investigationViewModel
+
+                        onAnalyzeRequested:
+                            root.navigate(1)
+
                         onExportRequested: function(investigation) {
-                            globalToast.show("Investigation export action is ready for InvestigationViewModel wiring.", "info")
+                            globalToast.show(
+                                "Investigation export will be connected next.",
+                                "info"
+                            )
                         }
                     }
 
                     CasesPage {
                         viewModel: dashboardViewModel
-                        onOpenFindingWorkflowRequested: root.navigate(2)
+
+                        onOpenFindingWorkflowRequested:
+                            root.navigate(2)
                     }
 
-                    SettingsPage { }
+                    SettingsPage {
+                    }
                 }
             }
 
             Toast {
                 id: globalToast
+
                 anchors.right: parent.right
                 anchors.rightMargin: 22
+
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 22
+
                 z: 100
             }
 
@@ -300,7 +479,9 @@ ApplicationWindow {
                 target: analysisViewModel
 
                 function onErrorChanged() {
-                    if (analysisViewModel.errorMessage !== "") {
+                    if (
+                        analysisViewModel.errorMessage !== ""
+                    ) {
                         globalToast.show(
                             analysisViewModel.errorMessage,
                             "error"
@@ -315,9 +496,25 @@ ApplicationWindow {
                     )
 
                     dashboardViewModel.loadDashboard()
+
+                    investigationViewModel.loadInvestigations()
                 }
             }
 
+            Connections {
+                target: investigationViewModel
+
+                function onErrorChanged() {
+                    if (
+                        investigationViewModel.errorMessage !== ""
+                    ) {
+                        globalToast.show(
+                            investigationViewModel.errorMessage,
+                            "error"
+                        )
+                    }
+                }
+            }
         }
     }
 }

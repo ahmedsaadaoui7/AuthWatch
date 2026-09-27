@@ -6,12 +6,27 @@ import "../components"
 Item {
     id: root
 
-    property var investigationsModel: []
-    property var selectedInvestigation: null
+    property var viewModel: null
     property string query: ""
+
+    readonly property var investigationsModel:
+        root.viewModel
+        ? root.viewModel.investigations
+        : []
+
+    readonly property var selectedInvestigation:
+        root.viewModel && root.viewModel.hasSelection
+        ? root.viewModel.selectedInvestigation
+        : null
 
     signal analyzeRequested()
     signal exportRequested(var investigation)
+
+    Component.onCompleted: {
+        if (root.viewModel) {
+            root.viewModel.loadInvestigations()
+        }
+    }
 
     BrandTheme {
         id: theme
@@ -104,7 +119,12 @@ Item {
                         delegate: Rectangle {
                             required property var modelData
 
-                            property bool accepted: root.matches(modelData)
+                            property bool accepted:
+                                root.matches(modelData)
+
+                            property bool isSelected:
+                                root.selectedInvestigation
+                                && root.selectedInvestigation.id === modelData.id
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: accepted ? 72 : 0
@@ -113,7 +133,7 @@ Item {
 
                             radius: 10
 
-                            color: root.selectedInvestigation === modelData
+                            color: isSelected
                                    ? "#102C3B"
                                    : (
                                          investigationMouse.containsMouse
@@ -121,7 +141,7 @@ Item {
                                          : "transparent"
                                      )
 
-                            border.width: root.selectedInvestigation === modelData ? 1 : 0
+                            border.width: isSelected ? 1 : 0
                             border.color: theme.primaryMuted
 
                             RowLayout {
@@ -200,7 +220,13 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
 
-                                onClicked: root.selectedInvestigation = modelData
+                                onClicked: {
+                                    if (root.viewModel) {
+                                        root.viewModel.selectInvestigation(
+                                            modelData.id
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -228,8 +254,6 @@ Item {
                 Panel {
                     Layout.fillWidth: true
 
-                    // Increased so the complete empty state remains
-                    // inside the Investigation Overview panel.
                     Layout.preferredHeight: 230
 
                     title: root.selectedInvestigation

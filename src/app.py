@@ -12,9 +12,17 @@ from src.database import (
     create_session_factory,
 )
 from src.database_migrations import upgrade_database
+
 from src.services.dashboard_service import DashboardService
+from src.services.investigation_service import (
+    InvestigationService,
+)
+
 from src.viewmodels.analysis_viewmodel import AnalysisViewModel
 from src.viewmodels.dashboard_viewmodel import DashboardViewModel
+from src.viewmodels.investigation_viewmodel import (
+    InvestigationViewModel,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -51,9 +59,10 @@ def main() -> int:
         database_engine
     )
 
-    # Main-thread session used by dashboard services.
+    # Main-thread database session.
     session = SessionLocal()
 
+    # Dashboard
     dashboard_service = DashboardService(
         session
     )
@@ -62,11 +71,20 @@ def main() -> int:
         dashboard_service
     )
 
-    # AnalysisViewModel receives the session factory,
-    # not the existing GUI-thread session.
+    # Investigations
+    investigation_service = InvestigationService(
+        session
+    )
+
+    investigation_viewmodel = InvestigationViewModel(
+        investigation_service
+    )
+
+    # Analysis
     #
-    # Its worker creates its own SQLAlchemy session
-    # inside the analysis thread.
+    # AnalysisViewModel receives the session factory
+    # because its background worker creates its own
+    # SQLAlchemy session.
     analysis_viewmodel = AnalysisViewModel(
         SessionLocal
     )
@@ -83,6 +101,11 @@ def main() -> int:
     context.setContextProperty(
         "analysisViewModel",
         analysis_viewmodel,
+    )
+
+    context.setContextProperty(
+        "investigationViewModel",
+        investigation_viewmodel,
     )
 
     qml_engine.load(
