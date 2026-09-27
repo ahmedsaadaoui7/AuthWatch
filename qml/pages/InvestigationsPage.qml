@@ -69,6 +69,13 @@ Item {
                 || String(item.public_id || "").toLowerCase().indexOf(q) >= 0
     }
 
+    function joinedOrNone(values) {
+        if (!values || values.length === 0)
+            return "None"
+
+        return values.join(", ")
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 24
@@ -119,7 +126,7 @@ Item {
             spacing: 14
 
             Panel {
-                Layout.preferredWidth: 410
+                Layout.preferredWidth: 360
                 Layout.fillHeight: true
 
                 title: "Investigation Library"
@@ -279,7 +286,6 @@ Item {
 
                 Panel {
                     Layout.fillWidth: true
-
                     Layout.preferredHeight: 230
 
                     title: root.selectedInvestigation
@@ -349,54 +355,354 @@ Item {
                     }
                 }
 
-                Panel {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    title: "Investigation Timeline"
-                    subtitle: "Chronological security activity and finding context"
+                    spacing: 14
 
-                    EmptyState {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        visible: root.selectedInvestigation === null
-
-                        title: "Timeline waiting for an investigation"
-                        message: "AuthWatch will show the event sequence here once an investigation is selected."
-                        code: "TL"
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
+                    Panel {
+                        Layout.preferredWidth: 320
+                        Layout.minimumWidth: 280
                         Layout.fillHeight: true
 
                         visible: root.selectedInvestigation !== null
 
-                        spacing: 10
+                        title: "Investigation Context"
+                        subtitle: "Affected entities, findings, and related cases"
 
-                        TimelineChart {
+                        ScrollView {
+                            id: contextScroll
+
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
-                            points: root.selectedInvestigation
-                                    && root.selectedInvestigation.timeline
-                                    ? root.selectedInvestigation.timeline
-                                    : []
+                            clip: true
+                            contentWidth: availableWidth
+
+                            ColumnLayout {
+                                width: contextScroll.availableWidth
+
+                                spacing: 10
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "AFFECTED ENTITIES"
+                                    color: theme.textMuted
+
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.letterSpacing: 0.6
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "Users: "
+                                          + root.joinedOrNone(
+                                                root.selectedInvestigation
+                                                && root.selectedInvestigation.affected_entities
+                                                ? root.selectedInvestigation.affected_entities.users
+                                                : []
+                                            )
+
+                                    color: theme.textSecondary
+
+                                    font.pixelSize: 11
+                                    wrapMode: Text.Wrap
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "Hosts: "
+                                          + root.joinedOrNone(
+                                                root.selectedInvestigation
+                                                && root.selectedInvestigation.affected_entities
+                                                ? root.selectedInvestigation.affected_entities.hosts
+                                                : []
+                                            )
+
+                                    color: theme.textSecondary
+
+                                    font.pixelSize: 11
+                                    wrapMode: Text.Wrap
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "Source IPs: "
+                                          + root.joinedOrNone(
+                                                root.selectedInvestigation
+                                                && root.selectedInvestigation.affected_entities
+                                                ? root.selectedInvestigation.affected_entities.source_ips
+                                                : []
+                                            )
+
+                                    color: theme.textSecondary
+
+                                    font.pixelSize: 11
+                                    wrapMode: Text.Wrap
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+
+                                    color: theme.border
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "FINDINGS"
+                                    color: theme.textMuted
+
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.letterSpacing: 0.6
+                                }
+
+                                Repeater {
+                                    model: root.selectedInvestigation
+                                           && root.selectedInvestigation.findings
+                                           ? root.selectedInvestigation.findings
+                                           : []
+
+                                    delegate: Rectangle {
+                                        required property var modelData
+
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 82
+
+                                        radius: 8
+
+                                        color: "#081A27"
+
+                                        border.width: 1
+                                        border.color: theme.border
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 9
+
+                                            spacing: 5
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+
+                                                Text {
+                                                    Layout.fillWidth: true
+
+                                                    text: modelData.rule_id
+                                                          || "Finding"
+
+                                                    color: theme.textPrimary
+
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                SeverityBadge {
+                                                    severity:
+                                                        modelData.severity
+                                                        || "low"
+                                                }
+
+                                                StatusBadge {
+                                                    status:
+                                                        modelData.status
+                                                        || "new"
+                                                }
+                                            }
+
+                                            Text {
+                                                Layout.fillWidth: true
+
+                                                text: modelData.title || ""
+
+                                                color: theme.textSecondary
+
+                                                font.pixelSize: 10
+
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    visible:
+                                        !root.selectedInvestigation
+                                        || !root.selectedInvestigation.findings
+                                        || root.selectedInvestigation.findings.length === 0
+
+                                    text: "No findings are linked to this investigation."
+
+                                    color: theme.textMuted
+                                    font.pixelSize: 10
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+
+                                    color: theme.border
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    text: "RELATED CASES"
+                                    color: theme.textMuted
+
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.letterSpacing: 0.6
+                                }
+
+                                Repeater {
+                                    model: root.selectedInvestigation
+                                           && root.selectedInvestigation.related_cases
+                                           ? root.selectedInvestigation.related_cases
+                                           : []
+
+                                    delegate: Rectangle {
+                                        required property var modelData
+
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 82
+
+                                        radius: 8
+
+                                        color: "#081A27"
+
+                                        border.width: 1
+                                        border.color: theme.border
+
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 9
+
+                                            spacing: 5
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+
+                                                Text {
+                                                    Layout.fillWidth: true
+
+                                                    text: modelData.public_id
+                                                          || "Case"
+
+                                                    color: theme.textPrimary
+
+                                                    font.pixelSize: 11
+                                                    font.bold: true
+
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                SeverityBadge {
+                                                    severity:
+                                                        modelData.priority
+                                                        || "low"
+                                                }
+
+                                                StatusBadge {
+                                                    status:
+                                                        modelData.status
+                                                        || "open"
+                                                }
+                                            }
+
+                                            Text {
+                                                Layout.fillWidth: true
+
+                                                text: modelData.title || ""
+
+                                                color: theme.textSecondary
+
+                                                font.pixelSize: 10
+
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+
+                                    visible:
+                                        !root.selectedInvestigation
+                                        || !root.selectedInvestigation.related_cases
+                                        || root.selectedInvestigation.related_cases.length === 0
+
+                                    text: "No cases are linked to this investigation."
+
+                                    color: theme.textMuted
+                                    font.pixelSize: 10
+                                }
+                            }
+                        }
+                    }
+
+                    Panel {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        title: "Investigation Timeline"
+                        subtitle: "Chronological security activity and finding context"
+
+                        EmptyState {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            visible: root.selectedInvestigation === null
+
+                            title: "Timeline waiting for an investigation"
+                            message: "AuthWatch will show the event sequence here once an investigation is selected."
+                            code: "TL"
                         }
 
-                        RowLayout {
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
 
-                            Item {
+                            visible: root.selectedInvestigation !== null
+
+                            spacing: 10
+
+                            TimelineChart {
                                 Layout.fillWidth: true
+                                Layout.fillHeight: true
+
+                                points: root.selectedInvestigation
+                                        && root.selectedInvestigation.timeline
+                                        ? root.selectedInvestigation.timeline
+                                        : []
                             }
 
-                            SecondaryButton {
-                                text: "Export investigation"
+                            RowLayout {
+                                Layout.fillWidth: true
 
-                                onClicked: {
-                                    exportDialog.open()
+                                Item {
+                                    Layout.fillWidth: true
+                                }
+
+                                SecondaryButton {
+                                    text: "Export investigation"
+
+                                    onClicked: {
+                                        exportDialog.open()
+                                    }
                                 }
                             }
                         }
