@@ -2,9 +2,9 @@
 
 AuthWatch is a defensive cybersecurity project for detecting suspicious authentication activity, correlating endpoint telemetry, and supporting structured SOC investigation workflows.
 
-Version 3 expands the V2 multi-rule authentication detection engine into a multi-source endpoint telemetry and event-correlation platform. It supports saved Windows Security EVTX files, saved Sysmon EVTX files, Linux authentication logs, and the existing V2-compatible CSV/JSON authentication formats.
+Version 4 builds a local desktop SOC workspace on top of the validated V3 telemetry, detection, correlation, timeline, MITRE ATT&CK, and reporting engine. The application keeps the analysis engine explainable while adding persistent investigations, findings, supporting evidence, analyst review, case management, and application settings.
 
-AuthWatch V3 normalizes telemetry from different sources into a common event model, applies authentication-focused detection rules, correlates related activity, reconstructs investigation timelines, attaches evidence-based MITRE ATT&CK mappings where supported, and generates human-readable Markdown and structured JSON investigation reports.
+AuthWatch remains an offline, analyst-driven tool. Telemetry is explicitly selected by the analyst and processed locally; V4 does not add automatic endpoint collection, continuous monitoring, cloud processing, or multi-user authentication.
 
 The project is designed to evolve gradually while maintaining clear architecture, deterministic analysis, automated testing, professional documentation, safe synthetic or sanitized data, and meaningful version history.
 
@@ -12,53 +12,76 @@ The project is designed to evolve gradually while maintaining clear architecture
 
 ## Current Version
 
-**V3 — Endpoint Telemetry & Event Correlation**
+**V4 — Local SOC Dashboard + Case Management**
 
-AuthWatch V3 provides a multi-source offline investigation workflow:
+AuthWatch V4 provides a local desktop investigation workflow built on the V3 engine:
 
 ```text
 V2 Authentication CSV / JSON ─┐
 Windows Security EVTX ─────────┤
-Sysmon EVTX ───────────────────┼──> Parsing
-Linux Authentication Logs ─────┘
-                                  |
-                                  v
-                            Normalization
-                                  |
-                                  v
-                         Detection Engine
-                                  |
-                                  v
-                        Correlation Engine
-                                  |
-                                  v
-                       Investigation Timeline
-                                  |
-                                  v
-                         MITRE ATT&CK Mapping
-                                  |
-                                  v
-                       Investigation Results
-                            /           \
-                           v             v
-                       Markdown         JSON
-                        Report          Output
+Sysmon EVTX ───────────────────┼──> V3 Analysis Engine
+Linux Authentication Logs ─────┘          |
+                                           v
+                                  Detection + Correlation
+                                           |
+                                           v
+                                 Persistent Investigation
+                                           |
+                      ┌────────────────────┼────────────────────┐
+                      v                    v                    v
+                  Findings              Timeline          SOC Dashboard
+                      |                                         |
+                      v                                         v
+             Supporting Evidence                         Analyst Workflow
+                      |
+                      v
+               Case Management
+                      |
+          Notes + Activity History
 ```
 
-Optional analysis context and configuration can also be supplied through:
+The V4 desktop application includes:
 
-- A JSON detection configuration file
-- A JSON correlation configuration file
-- A disabled-account username list
-- Linux year and UTC-offset context for traditional syslog-style timestamps
+- Local PySide6 / Qt Quick desktop interface
+- SQLite persistence through SQLAlchemy and Alembic
+- Security-operations dashboard with finding and case metrics
+- Analyst-driven telemetry analysis using the existing V3 engine
+- Persistent investigations and chronological event timelines
+- Findings queue with severity filtering, analyst review status, and supporting evidence
+- Finding-to-case escalation
+- Case priority, status, resolution, notes, linked findings, and activity history
+- Investigation Markdown/JSON export
+- Persistent application settings for supported V4 behavior
+- Safe analysis-worker lifecycle and shutdown handling
 
-AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by the analyst. It does not automatically discover, collect, or continuously monitor operating-system logs.
+V4 is currently in final release validation. The complete automated suite passes on Kali Linux; Windows V4 compatibility validation is the remaining platform gate before release.
 
 ---
 
 ## Features
 
-### Telemetry and Input
+### V4 Desktop SOC Workspace
+
+- Run the AuthWatch V3 engine from a local desktop application
+- Review total, high-severity, medium-severity, and active-case metrics
+- Inspect recent high-severity findings and affected users, hosts, and source IPs
+- Persist investigations, normalized events, findings, evidence links, cases, notes, and activities in SQLite
+- Review investigation context, telemetry sources, affected entities, findings, and chronological timelines
+- Filter the findings queue by severity and search by title or rule ID
+- Mark findings reviewed without losing escalation state
+- Preserve supporting events for normal detections and correlations
+- Escalate findings into analyst cases
+- Track case priority, status, resolution, notes, linked findings, and activity history
+- Close and reopen cases while preserving historical activity
+- Export persisted investigations to Markdown or JSON
+- Persist supported application settings locally
+- Prevent concurrent duplicate analysis runs and handle active-worker shutdown safely
+
+### V3 Engine Foundation
+
+The V4 desktop workflow preserves the V3 analytical capabilities documented below.
+
+#### Telemetry and Input
 
 - Parse V2-compatible authentication events from CSV and JSON
 - Read saved Windows Security EVTX telemetry
@@ -71,7 +94,7 @@ AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by
 - Validate supported telemetry and reject malformed or unsupported input cleanly
 - Combine multiple telemetry sources into a single V3 investigation
 
-### Detection
+#### Detection
 
 - Detect potential brute-force activity
 - Detect potential password spraying
@@ -84,7 +107,7 @@ AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by
 - Load rule-specific JSON detection configuration
 - Assign stable rule IDs and severity levels
 
-### Correlation and Investigation
+#### Correlation and Investigation
 
 - Correlate successful authentication with process activity
 - Correlate privileged logon with process activity
@@ -98,7 +121,7 @@ AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by
 - Identify affected users, hosts, and IP addresses
 - Attach predefined MITRE ATT&CK mappings only where observed evidence supports them
 
-### Reporting and CLI
+#### Reporting and CLI
 
 - Display detections and correlations in the terminal
 - Generate V3 Markdown investigation reports
@@ -110,7 +133,7 @@ AuthWatch V3 performs offline analysis of telemetry files explicitly supplied by
 - Return appropriate command-line exit codes
 - Handle missing files, malformed input, and invalid configuration cleanly
 
-### Quality and Safety
+#### Quality and Safety
 
 - Use only synthetic, sanitized, or explicitly authorized telemetry in the repository
 - Keep real EVTX telemetry out of version control
@@ -607,6 +630,13 @@ authwatch/
 
 | Component | Responsibility |
 |---|---|
+| `src/app.py` | V4 desktop application bootstrap, database/session lifecycle, ViewModel wiring, QML loading, and safe shutdown |
+| `src/analysis_engine.py` | Shared orchestration adapter that exposes the V3 engine to the V4 application layer |
+| `src/services/` | V4 application workflows for analysis persistence, dashboard data, findings, investigations, cases, and settings |
+| `src/repositories/` | SQLAlchemy persistence queries for V4 desktop data |
+| `src/viewmodels/` | PySide6 QObject/ViewModel bridge between services and QML |
+| `src/models/` | SQLAlchemy models for investigations, telemetry sources, events, findings, evidence links, cases, notes, activities, and settings |
+| `qml/` | Qt Quick desktop shell, reusable components, and V4 SOC pages |
 | `main.py` | CLI argument handling, multi-source orchestration, detection/correlation execution, enrichment, and output selection |
 | `src/config.py` | Detection/correlation defaults and custom configuration validation |
 | `src/parser.py` | V2 CSV/JSON authentication parsing, shared validation, and disabled-account loading |
@@ -657,13 +687,25 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-V3 EVTX support uses `python-evtx`. Automated tests use `pytest`.
+V3 EVTX support uses `python-evtx`. V4 desktop persistence uses SQLAlchemy and Alembic, and the desktop interface uses PySide6 / Qt Quick. Automated tests use `pytest`.
 
-The current V3 development environment uses Python 3.13.
+The current V4 Kali development environment uses Python 3.13.
 
 ---
 
 ## Usage
+
+### V4 Desktop Application
+
+Start the local SOC desktop application from the project virtual environment:
+
+```bash
+python -m src.app
+```
+
+The desktop workflow provides Dashboard, Analyze, Findings, Investigations, Cases, and Settings pages. Analysis still uses the V3 engine internally, so V3 detection/correlation behavior remains the analytical foundation.
+
+### V3 CLI
 
 View the complete CLI:
 
@@ -794,7 +836,7 @@ Run the complete suite from the project virtual environment:
 python -m pytest -q
 ```
 
-The current V3 suite contains **250 automated tests**.
+The current complete V4 suite contains **428 automated tests** passing on Kali Linux.
 
 Coverage includes:
 
@@ -820,6 +862,14 @@ Coverage includes:
 - Multi-source CLI correlation
 - Missing and malformed input handling
 - Zero-finding investigations
+- V4 database models, migrations, repositories, and service workflows
+- Analysis persistence and supporting-evidence links
+- Dashboard aggregation and desktop ViewModels
+- Investigation selection, context, timeline, and export workflows
+- Finding review, evidence loading, related findings, and escalation state
+- Case creation, linked findings, priority/status transitions, notes, closure, resolution, reopening, and activity history
+- Persistent application settings and validation
+- Analysis-worker lifecycle, duplicate-run prevention, exact completed-investigation navigation, and shutdown safety
 - Regression behavior across the complete project
 
 ### V3 Scenario Dataset Library
@@ -880,29 +930,27 @@ V3 validation includes repeated manual analysis confirming byte-for-byte identic
 
 ---
 
-## V3 Limitations
+## V4 Limitations
 
-AuthWatch V3 intentionally remains an offline investigation tool.
+AuthWatch V4 is a local, offline SOC investigation application.
 
 It does not currently provide:
 
-- Automatic local log discovery
-- Automatic Windows Event Log collection
-- Automatic Linux log collection
+- Automatic local log discovery or endpoint collection
 - Continuous or real-time monitoring
 - Background endpoint agents
-- Persistent databases
-- A SOC dashboard
-- Case-management UI
-- User accounts
-- Authentication or RBAC
+- Centralized server deployment
+- User accounts, authentication, or RBAC
 - Multi-user analyst workflows
+- Remote collaboration or synchronization
 - Threat-intelligence feeds
 - Production SIEM integration
 - Production deployment hardening
 - AI or machine-learning detection
 
-These boundaries are intentional. V3 focuses on building a reliable telemetry, detection, correlation, timeline, and investigation-reporting foundation before later versions add application-layer capabilities.
+The SQLite database is local to the workstation. V4 is intended for a single analyst operating on explicitly selected telemetry. Secure multi-user authentication and RBAC remain V5 scope.
+
+These boundaries are intentional. V4 focuses on turning the V3 analysis engine into a professional local SOC investigation and case-management workflow without prematurely adding multi-user or production-platform complexity.
 
 ---
 
@@ -974,7 +1022,9 @@ Windows Security EVTX, Sysmon EVTX, Linux authentication logs, cross-source norm
 
 ### V4 — Local SOC Dashboard + Case Management
 
-A local SOC investigation workspace built on the V3 engine, including visual alert/correlation analysis, timelines, filtering, investigation records, analyst notes, and case-management workflows.
+A local SOC investigation workspace built on the V3 engine, including dashboard metrics, telemetry analysis, persistent investigations, visual findings/evidence review, timelines, filtering, investigation export, analyst notes, case-management workflows, and persistent application settings.
+
+**Status:** Release candidate. Implementation and the 428-test Kali validation suite are complete. Final Windows V4 compatibility validation remains before the `v4.0.0` release.
 
 ### V5 — Secure Multi-User SOC Application
 
@@ -994,22 +1044,27 @@ See the `LICENSE` file for licensing information.
 
 ## Project Status
 
-**AuthWatch V3 — Endpoint Telemetry & Event Correlation**
+**AuthWatch V4 — Local SOC Dashboard + Case Management**
 
-V3 implementation and automated scenario validation are complete on Kali Linux.
+V4 implementation and automated validation are complete on Kali Linux.
 
 Current validation status:
 
 ```text
-Automated test suite            250/250 passing
-V3 scenario dataset suite       Complete
-Manual Linux end-to-end test    Passing
-Markdown investigation output   Passing
-Structured JSON output          Passing
-Deterministic output validation Passing
-Repository hygiene              Passing
-Documentation review            Complete
-Windows compatibility validation Complete
+Automated test suite             428/428 passing on Kali Linux
+V3 scenario dataset suite        Complete
+V3 CLI compatibility             Passing
+V4 desktop launch                Passing on Kali Linux
+Dashboard workflow               Passing
+Analysis persistence             Passing
+Investigation timeline/context   Passing
+Finding review/evidence          Passing
+Case management workflow         Passing
+Persistent settings              Passing
+Investigation export             Passing
+Repository diff check            Passing
+Windows V4 validation            Pending
+Documentation review             In progress
 ```
 
-All implementation and compatibility validation gates are complete. This codebase represents the validated AuthWatch `v3.0.0` release state.
+The V4 feature set is implemented and locally validated. The remaining release gates are final documentation review and Windows desktop compatibility validation before tagging `v4.0.0`.

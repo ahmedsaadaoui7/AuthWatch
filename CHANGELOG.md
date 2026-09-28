@@ -2,6 +2,53 @@
 
 All notable changes to AuthWatch are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Local PySide6 / Qt Quick SOC desktop application built on the V3 analysis engine
+- SQLite persistence with SQLAlchemy models and Alembic migrations
+- Persistent investigations, telemetry-source metadata, normalized events, findings, and finding-to-event evidence links
+- Security Operations Dashboard with finding severity metrics, active-case metrics, affected-entity summaries, recent high-severity findings, and active cases
+- Desktop telemetry-analysis workflow for Windows Security, Sysmon, Linux authentication, and V2-compatible AuthWatch CSV/JSON input
+- Persistent investigation library with operational summary, telemetry context, affected users/hosts/source IPs, linked findings, chronological event timeline, and Markdown/JSON export
+- Findings Queue with search, severity filtering, status handling, supporting evidence, related findings, analyst review, and case escalation
+- Persistent supporting-evidence links for normal authentication detections as well as V3 correlations
+- Case-management workflow with stable `AW-NNNN` identifiers, linked findings, priority changes, Open/Investigating/Closed states, resolution, analyst notes, activity history, closure, and reopening
+- Persistent application settings for default Findings severity, automatic completed-investigation navigation, and high-severity visual alerts
+- Dedicated V4 repositories, services, and PySide6 ViewModels separating QML presentation from persistence and workflow logic
+- Analysis worker isolation with a dedicated database session
+- Duplicate-analysis prevention and safe active-worker shutdown behavior
+- Exact navigation to the investigation created by a completed analysis
+- Regression coverage for mixed timezone-aware/naive evidence timestamps and disabled-account evidence matching
+
+### Changed
+
+- Expanded AuthWatch from a CLI-centered investigation engine into a local desktop SOC investigation and case-management application while preserving the V3 analytical foundation
+- Added persistent SQLite investigation state instead of relying only on generated report files
+- Extended findings from report output into analyst-review objects with durable status and supporting evidence
+- Extended investigation timelines from generated output into persistent desktop investigation views
+- Integrated case state changes with finding escalation state and dashboard refresh behavior
+- Added cross-page refresh/navigation so Dashboard, Findings, Investigations, Cases, and Settings remain synchronized after analyst actions
+- Hardened desktop shutdown and analysis lifecycle behavior
+
+### Fixed
+
+- Persisted supporting events for normal authentication detections, not only correlations
+- Prevented reviewed actions from overwriting an already escalated finding state
+- Prevented duplicate in-memory analyst-note display during the same session
+- Prevented stale Finding and Investigation detail panels after workflow changes
+- Prevented duplicate application-setting inserts inside one `autoflush=False` transaction
+- Corrected supporting-evidence timestamp comparison when telemetry mixes timezone-aware and timezone-naive timestamps
+- Tightened disabled-account evidence matching to the exact triggering authentication event
+
+### Validation
+
+- Complete automated suite: 428 tests passing on Kali Linux
+- `git diff --check` passing
+- V4 Dashboard, Analyze, Findings, Investigations, Cases, Settings, evidence, export, close/reopen, and persistence workflows manually smoke-tested on Kali Linux
+- Windows V4 desktop compatibility validation pending before release
+
 ## [3.0.0] - 2026-09-09
 
 ### Added
