@@ -202,6 +202,15 @@ class InvestigationViewModel(QObject):
         if self._loading:
             return
 
+        selected_id = (
+            self._selected_investigation.get("id")
+            if self._selected_investigation
+            else None
+        )
+
+        loaded_ids = set()
+        load_succeeded = False
+
         self._set_loading(True)
         self._set_error("")
 
@@ -218,6 +227,12 @@ class InvestigationViewModel(QObject):
                 in investigations
             ]
 
+            loaded_ids = {
+                item["id"]
+                for item in self._investigations
+            }
+
+            load_succeeded = True
             self.investigationsChanged.emit()
 
         except Exception as error:
@@ -225,6 +240,17 @@ class InvestigationViewModel(QObject):
 
         finally:
             self._set_loading(False)
+
+        if (
+            load_succeeded
+            and selected_id is not None
+        ):
+            if selected_id in loaded_ids:
+                self.selectInvestigation(
+                    selected_id
+                )
+            else:
+                self.clearSelection()
 
     @Slot(int)
     def selectInvestigation(

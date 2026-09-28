@@ -462,3 +462,95 @@ def test_investigation_viewmodel_rejects_unknown_export_extension():
     assert viewmodel.errorMessage == (
         "Export file must use .json or .md."
     )
+
+
+
+def test_investigation_viewmodel_reload_refreshes_existing_selection():
+    investigation = _make_investigation()
+
+    related_cases = []
+
+    class FakeService:
+        def list_investigations(self):
+            return [investigation]
+
+        def get_investigation(
+            self,
+            investigation_id,
+        ):
+            assert investigation_id == 1
+            return investigation
+
+        def load_timeline(
+            self,
+            *,
+            investigation_id,
+        ):
+            return []
+
+        def load_affected_entities(
+            self,
+            *,
+            investigation_id,
+        ):
+            return {
+                "users": [],
+                "hosts": [],
+                "source_ips": [],
+            }
+
+        def load_findings(
+            self,
+            *,
+            investigation_id,
+        ):
+            return []
+
+        def load_related_cases(
+            self,
+            *,
+            investigation_id,
+        ):
+            return list(related_cases)
+
+    viewmodel = InvestigationViewModel(
+        FakeService()
+    )
+
+    viewmodel.selectInvestigation(1)
+
+    assert (
+        viewmodel.selectedInvestigation[
+            "related_cases"
+        ]
+        == []
+    )
+
+    related_cases.append(
+        SimpleNamespace(
+            id=30,
+            public_id="AW-0030",
+            title="Brute Force Review",
+            priority="high",
+            status="open",
+            resolution=None,
+            created_at=datetime(
+                2026,
+                9,
+                28,
+                22,
+                0,
+                tzinfo=timezone.utc,
+            ),
+            closed_at=None,
+        )
+    )
+
+    viewmodel.loadInvestigations()
+
+    assert (
+        viewmodel.selectedInvestigation[
+            "related_cases"
+        ][0]["public_id"]
+        == "AW-0030"
+    )

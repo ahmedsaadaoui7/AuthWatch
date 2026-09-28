@@ -169,6 +169,11 @@ def main() -> int:
 
     exit_code = app.exec()
 
+    # Defensive shutdown: if the application event loop exits
+    # while analysis is still active, let the worker finish before
+    # destroying QML objects or disposing the database engine.
+    analysis_viewmodel.shutdown()
+
     # Destroy QML objects while the Python
     # ViewModels are still alive.
     del qml_engine

@@ -19,6 +19,20 @@ ApplicationWindow {
     property int currentPage: 0
     property date currentDateTime: new Date()
 
+    onClosing: function(close) {
+        if (
+            analysisViewModel
+            && analysisViewModel.running
+        ) {
+            close.accepted = false
+
+            globalToast.show(
+                "Analysis is still running. Wait for it to finish before closing AuthWatch.",
+                "info"
+            )
+        }
+    }
+
     readonly property var applicationSettings:
         settingsViewModel
         ? settingsViewModel.settings
@@ -470,6 +484,8 @@ ApplicationWindow {
                     }
 
                     AnalyzePage {
+                        viewModel: analysisViewModel
+
                         onAnalysisRequested: function(payload) {
                             analysisViewModel.startAnalysis(
                                 payload
@@ -559,37 +575,19 @@ ApplicationWindow {
 
                     investigationViewModel.loadInvestigations()
 
+                    var completedInvestigation =
+                        analysisViewModel.completedInvestigation
+
                     if (
                         root.openCompletedInvestigation
-                        && investigationViewModel.investigations
-                        && investigationViewModel.investigations.length > 0
+                        && completedInvestigation
+                        && completedInvestigation.id
                     ) {
-                        var newestInvestigation = null
+                        root.navigate(3)
 
-                        for (
-                            var index = 0;
-                            index < investigationViewModel.investigations.length;
-                            ++index
-                        ) {
-                            var candidate =
-                                investigationViewModel.investigations[index]
-
-                            if (
-                                newestInvestigation === null
-                                || Number(candidate.id)
-                                   > Number(newestInvestigation.id)
-                            ) {
-                                newestInvestigation = candidate
-                            }
-                        }
-
-                        if (newestInvestigation !== null) {
-                            root.navigate(3)
-
-                            investigationViewModel.selectInvestigation(
-                                newestInvestigation.id
-                            )
-                        }
+                        investigationViewModel.selectInvestigation(
+                            Number(completedInvestigation.id)
+                        )
                     }
                 }
             }

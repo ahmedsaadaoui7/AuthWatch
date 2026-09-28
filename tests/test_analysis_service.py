@@ -820,3 +820,120 @@ def test_analysis_service_links_detection_supporting_events(
             "10.0.0.50",
             "10.0.0.50",
         ]
+
+
+
+def test_analysis_service_evidence_window_handles_mixed_timezone_styles():
+    aware_unrelated = {
+        "timestamp": "2026-08-08T09:00:12Z",
+        "username": "other",
+        "source_ip": "10.0.0.99",
+        "result": "failure",
+    }
+
+    matching_event = {
+        "timestamp": "2026-08-08T09:00:24",
+        "username": "admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure",
+    }
+
+    result = AnalysisResult(
+        events=[
+            aware_unrelated,
+            matching_event,
+        ],
+        detections=[],
+        correlations=[],
+        v3_mode=True,
+    )
+
+    expected_event = object()
+
+    event_map = {
+        id(aware_unrelated): object(),
+        id(matching_event): expected_event,
+    }
+
+    service = AnalysisService.__new__(
+        AnalysisService
+    )
+
+    supporting_events = (
+        service._find_detection_supporting_events(
+            detection={
+                "rule_id": "AUTH-BF-001",
+                "first_seen": "2026-08-08T09:00:00",
+                "last_seen": "2026-08-08T09:00:48",
+                "details": {
+                    "source_ip": "10.0.0.50",
+                    "username": "admin",
+                    "failed_attempts": 5,
+                },
+            },
+            result=result,
+            event_map=event_map,
+        )
+    )
+
+    assert supporting_events == [
+        expected_event
+    ]
+
+
+def test_analysis_service_disabled_account_evidence_matches_exact_attempt():
+    expected_attempt = {
+        "timestamp": "2026-08-17T09:00:00",
+        "username": "old_admin",
+        "source_ip": "10.0.0.50",
+        "result": "failure",
+    }
+
+    simultaneous_other_attempt = {
+        "timestamp": "2026-08-17T09:00:00",
+        "username": "old_admin",
+        "source_ip": "10.0.0.60",
+        "result": "failure",
+    }
+
+    result = AnalysisResult(
+        events=[
+            expected_attempt,
+            simultaneous_other_attempt,
+        ],
+        detections=[],
+        correlations=[],
+        v3_mode=True,
+    )
+
+    expected_event = object()
+
+    event_map = {
+        id(expected_attempt): expected_event,
+        id(simultaneous_other_attempt): object(),
+    }
+
+    service = AnalysisService.__new__(
+        AnalysisService
+    )
+
+    supporting_events = (
+        service._find_detection_supporting_events(
+            detection={
+                "rule_id": "AUTH-DA-001",
+                "first_seen": "2026-08-17T09:00:00",
+                "last_seen": "2026-08-17T09:00:00",
+                "details": {
+                    "source_ip": "10.0.0.50",
+                    "username": "old_admin",
+                    "result": "failure",
+                },
+            },
+            result=result,
+            event_map=event_map,
+        )
+    )
+
+    assert supporting_events == [
+        expected_event
+    ]

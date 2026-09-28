@@ -325,3 +325,37 @@ def test_analysis_worker_rolls_back_failed_analysis():
     assert session.committed is False
     assert session.rolled_back is True
     assert session.closed is True
+
+
+
+def test_analysis_viewmodel_shutdown_waits_for_running_thread():
+    class FakeThread:
+        def __init__(self):
+            self.quit_called = False
+            self.wait_called = False
+
+        def isRunning(self):
+            return True
+
+        def quit(self):
+            self.quit_called = True
+
+        def wait(self):
+            self.wait_called = True
+            return True
+
+    viewmodel = AnalysisViewModel(
+        session_factory=lambda: None,
+    )
+
+    thread = FakeThread()
+
+    viewmodel._thread = thread
+    viewmodel._worker = object()
+
+    viewmodel.shutdown()
+
+    assert thread.quit_called is True
+    assert thread.wait_called is True
+    assert viewmodel._thread is None
+    assert viewmodel._worker is None

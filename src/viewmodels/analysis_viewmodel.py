@@ -367,3 +367,25 @@ class AnalysisViewModel(QObject):
 
         if thread is not None:
             thread.deleteLater()
+
+
+    def shutdown(self) -> None:
+        """
+        Finish an active worker thread before application teardown.
+
+        QThread.quit() is thread-safe. If the worker is currently
+        executing, the thread exits as soon as the worker returns.
+        Waiting here prevents the database engine and QObject tree
+        from being destroyed while analysis is still active.
+        """
+        thread = self._thread
+
+        if thread is None:
+            return
+
+        if thread.isRunning():
+            thread.quit()
+            thread.wait()
+
+        self._worker = None
+        self._thread = None

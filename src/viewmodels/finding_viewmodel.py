@@ -166,6 +166,15 @@ class FindingViewModel(QObject):
         if self._loading:
             return
 
+        selected_id = (
+            self._selected_finding.get("id")
+            if self._selected_finding
+            else None
+        )
+
+        loaded_ids = set()
+        load_succeeded = False
+
         self._set_loading(True)
         self._set_error("")
 
@@ -181,6 +190,12 @@ class FindingViewModel(QObject):
                 for finding in findings
             ]
 
+            loaded_ids = {
+                item["id"]
+                for item in self._findings
+            }
+
+            load_succeeded = True
             self.findingsChanged.emit()
 
         except Exception as error:
@@ -188,6 +203,15 @@ class FindingViewModel(QObject):
 
         finally:
             self._set_loading(False)
+
+        if (
+            load_succeeded
+            and selected_id is not None
+        ):
+            if selected_id in loaded_ids:
+                self.selectFinding(selected_id)
+            else:
+                self.clearSelection()
 
     @Slot(int)
     def selectFinding(
@@ -258,24 +282,13 @@ class FindingViewModel(QObject):
         self._set_error("")
 
         try:
-            finding = self._service.mark_reviewed(
+            self._service.mark_reviewed(
                 finding_id=finding_id
             )
 
             self._service.session.commit()
 
-            updated = self._serialize_finding(
-                finding
-            )
-
             self.loadFindings()
-
-            if (
-                self._selected_finding
-                and self._selected_finding.get("id")
-                == finding_id
-            ):
-                self.selectFinding(finding_id)
 
             self.findingUpdated.emit()
 

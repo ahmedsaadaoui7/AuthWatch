@@ -7,6 +7,8 @@ import "../components"
 Item {
     id: root
 
+    property var viewModel: null
+
     property string windowsPath: ""
     property string sysmonPath: ""
     property string linuxPath: ""
@@ -24,6 +26,16 @@ Item {
         sysmonPath !== "" ||
         linuxPath !== "" ||
         authwatchPath !== ""
+
+    readonly property bool analysisRunning:
+        root.viewModel
+        ? root.viewModel.running
+        : false
+
+    readonly property string analysisStatus:
+        root.viewModel
+        ? root.viewModel.statusMessage
+        : ""
 
     readonly property int selectedSourceCount:
         (windowsPath !== "" ? 1 : 0) +
@@ -499,22 +511,34 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 138
 
-                title: root.hasTelemetry
-                       ? "Ready to Analyze"
-                       : "Select Telemetry to Continue"
+                title: root.analysisRunning
+                       ? "Analysis Running"
+                       : (
+                             root.hasTelemetry
+                             ? "Ready to Analyze"
+                             : "Select Telemetry to Continue"
+                         )
 
-                subtitle: root.hasTelemetry
-                          ? (
-                              root.selectedSourceCount
-                              + " source"
-                              + (root.selectedSourceCount === 1 ? "" : "s")
-                              + " selected for this investigation"
-                          )
-                          : "Choose at least one telemetry source above"
+                subtitle: root.analysisRunning
+                          ? "AuthWatch is processing the selected telemetry locally"
+                          : (
+                                root.hasTelemetry
+                                ? (
+                                      root.selectedSourceCount
+                                      + " source"
+                                      + (root.selectedSourceCount === 1 ? "" : "s")
+                                      + " selected for this investigation"
+                                  )
+                                : "Choose at least one telemetry source above"
+                            )
 
-                accentColor: root.hasTelemetry
-                             ? theme.primary
-                             : "transparent"
+                accentColor: root.analysisRunning
+                             ? theme.success
+                             : (
+                                   root.hasTelemetry
+                                   ? theme.primary
+                                   : "transparent"
+                               )
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -529,9 +553,13 @@ Item {
                         Text {
                             Layout.fillWidth: true
 
-                            text: root.hasTelemetry
-                                  ? "The analysis request is ready."
-                                  : "No telemetry source has been selected."
+                            text: root.analysisRunning
+                                  ? "Telemetry analysis is in progress."
+                                  : (
+                                        root.hasTelemetry
+                                        ? "The analysis request is ready."
+                                        : "No telemetry source has been selected."
+                                    )
 
                             color: theme.textPrimary
 
@@ -544,9 +572,17 @@ Item {
                         Text {
                             Layout.fillWidth: true
 
-                            text: root.hasTelemetry
-                                  ? "Review the configuration, then start the local analysis workflow."
-                                  : "Windows Security, Sysmon, Linux authentication, and AuthWatch CSV/JSON are supported by this V4 workflow."
+                            text: root.analysisRunning
+                                  ? (
+                                        root.analysisStatus !== ""
+                                        ? root.analysisStatus
+                                        : "Running the AuthWatch V3 detection and correlation engine."
+                                    )
+                                  : (
+                                        root.hasTelemetry
+                                        ? "Review the configuration, then start the local analysis workflow."
+                                        : "Windows Security, Sysmon, Linux authentication, and AuthWatch CSV/JSON are supported by this V4 workflow."
+                                    )
 
                             color: theme.textMuted
                             font.pixelSize: 11
@@ -559,8 +595,13 @@ Item {
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                         Layout.preferredWidth: 140
 
-                        text: "Run analysis"
-                        enabled: root.hasTelemetry
+                        text: root.analysisRunning
+                              ? "Analyzing..."
+                              : "Run analysis"
+
+                        enabled:
+                            root.hasTelemetry
+                            && !root.analysisRunning
 
                         onClicked: root.analysisRequested({
                             investigation_name: root.investigationName,

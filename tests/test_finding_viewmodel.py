@@ -384,3 +384,60 @@ def test_finding_viewmodel_review_failure_rolls_back():
     assert viewmodel.errorMessage == (
         "Review failed"
     )
+
+
+
+def test_finding_viewmodel_reload_refreshes_existing_selection():
+    finding = _make_finding(
+        status="reviewed",
+    )
+
+    class FakeService:
+        def list_findings(self):
+            return [finding]
+
+        def get_finding(
+            self,
+            finding_id,
+        ):
+            assert finding_id == 1
+            return finding
+
+        def load_supporting_evidence(
+            self,
+            *,
+            finding_id,
+        ):
+            return []
+
+        def load_related_findings(
+            self,
+            *,
+            finding_id,
+        ):
+            return []
+
+    viewmodel = FindingViewModel(
+        FakeService()
+    )
+
+    viewmodel.selectFinding(1)
+
+    assert (
+        viewmodel.selectedFinding["status"]
+        == "reviewed"
+    )
+
+    finding.status = "escalated"
+
+    viewmodel.loadFindings()
+
+    assert (
+        viewmodel.findings[0]["status"]
+        == "escalated"
+    )
+
+    assert (
+        viewmodel.selectedFinding["status"]
+        == "escalated"
+    )

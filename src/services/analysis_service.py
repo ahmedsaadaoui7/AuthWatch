@@ -379,6 +379,24 @@ class AnalysisService:
                 f"Invalid finding timestamp: {value}"
             ) from error
 
+    @staticmethod
+    def _comparison_timestamp(
+        value: datetime,
+    ) -> datetime:
+        """
+        Return a timezone-safe timestamp for internal comparisons.
+
+        Legacy AuthWatch CSV/JSON timestamps may be timezone-naive,
+        while Windows/Linux telemetry can be timezone-aware. For the
+        evidence-window comparison only, naive values are treated as
+        UTC-equivalent so mixed telemetry cannot raise a naive/aware
+        datetime comparison error.
+        """
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+
+        return value.astimezone(timezone.utc)
+
     def _find_detection_supporting_events(
         self,
         *,
@@ -404,9 +422,22 @@ class AnalysisService:
 
         source_ip = details.get("source_ip")
         username = details.get("username")
+        result_value = details.get("result")
 
         usernames = details.get("usernames") or []
         source_ips = details.get("source_ips") or []
+
+        first_seen_comparison = (
+            self._comparison_timestamp(first_seen)
+            if first_seen is not None
+            else None
+        )
+
+        last_seen_comparison = (
+            self._comparison_timestamp(last_seen)
+            if last_seen is not None
+            else None
+        )
 
         supporting_events = []
         seen_events = set()
@@ -418,20 +449,22 @@ class AnalysisService:
                 continue
 
             event_timestamp = (
-                self._parse_event_timestamp(
-                    event_data
+                self._comparison_timestamp(
+                    self._parse_event_timestamp(
+                        event_data
+                    )
                 )
             )
 
             if (
-                first_seen is not None
-                and event_timestamp < first_seen
+                first_seen_comparison is not None
+                and event_timestamp < first_seen_comparison
             ):
                 continue
 
             if (
-                last_seen is not None
-                and event_timestamp > last_seen
+                last_seen_comparison is not None
+                and event_timestamp > last_seen_comparison
             ):
                 continue
 
@@ -487,6 +520,10 @@ class AnalysisService:
                 matches = (
                     event_data.get("username")
                     == username
+                    and event_data.get("source_ip")
+                    == source_ip
+                    and event_data.get("result")
+                    == result_value
                 )
 
             elif rule_id == "AUTH-MA-001":
