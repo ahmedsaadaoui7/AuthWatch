@@ -1,16 +1,17 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from src.models.case import Case
 from src.models.case_activity import CaseActivity
-from src.repositories.case_repository import CaseRepository
-
-from src.models.case_note import CaseNote
 from src.models.case_finding import CaseFinding
+from src.models.case_note import CaseNote
+from src.repositories.case_repository import CaseRepository
 from src.repositories.finding_repository import FindingRepository
 
-from datetime import datetime, timezone
 
 class CaseService:
     def __init__(self, session: Session):
@@ -18,12 +19,40 @@ class CaseService:
         self.case_repository = CaseRepository(session)
         self.finding_repository = FindingRepository(session)
 
+    def get_case(
+        self,
+        case_id: int,
+    ) -> Case:
+        case = self.case_repository.get_by_id(case_id)
+
+        if case is None:
+            raise ValueError("Case not found.")
+
+        return case
+
+    def list_cases(self) -> list[Case]:
+        return self.case_repository.list_all()
+
     def create_case(
         self,
         *,
         title: str,
         priority: str,
     ) -> Case:
+        title = title.strip()
+
+        if not title:
+            raise ValueError("Case title is required.")
+
+        allowed_priorities = {
+            "high",
+            "medium",
+            "low",
+        }
+
+        if priority not in allowed_priorities:
+            raise ValueError("Invalid case priority.")
+
         temporary_public_id = (
             f"pending-{uuid4()}"
         )
@@ -54,16 +83,49 @@ class CaseService:
 
         return case
 
+    def create_case_from_finding(
+        self,
+        *,
+        finding_id: int,
+        title: str,
+        priority: str,
+    ) -> Case:
+        finding = self.finding_repository.get_by_id(
+            finding_id
+        )
+
+        if finding is None:
+            raise ValueError("Finding not found.")
+
+        if finding.status == "escalated":
+            raise ValueError(
+                "Finding is already escalated."
+            )
+
+        case = self.create_case(
+            title=title,
+            priority=priority,
+        )
+
+        self.link_finding(
+            case_id=case.id,
+            finding_id=finding_id,
+        )
+
+        return case
+
     def link_finding(
         self,
         *,
         case_id: int,
         finding_id: int,
     ) -> CaseFinding:
-        case = self.case_repository.get_by_id(case_id)
+        case = self.get_case(case_id)
 
-        if case is None:
-            raise ValueError("Case not found.")
+        if case.status == "closed":
+            raise ValueError(
+                "Cannot add findings to a closed case."
+            )
 
         finding = self.finding_repository.get_by_id(
             finding_id
@@ -71,6 +133,21 @@ class CaseService:
 
         if finding is None:
             raise ValueError("Finding not found.")
+
+        for existing_link in case.case_findings:
+            linked_id = existing_link.finding_id
+
+            if (
+                linked_id == finding_id
+                or (
+                    existing_link.finding is not None
+                    and existing_link.finding.id
+                    == finding_id
+                )
+            ):
+                raise ValueError(
+                    "Finding is already linked to this case."
+                )
 
         previous_status = finding.status
 
@@ -83,7 +160,6 @@ class CaseService:
         finding.status = "escalated"
 
         activity = CaseActivity(
-            case=case,
             activity_type="finding_added",
             description=(
                 f"Finding {finding.rule_id} linked to case."
@@ -106,13 +182,13 @@ class CaseService:
         case_id: int,
         content: str,
     ) -> CaseNote:
-        case = self.case_repository.get_by_id(case_id)
+        case = self.get_case(case_id)
+        content = content.strip()
 
-        if case is None:
-            raise ValueError("Case not found.")
+        if not content:
+            raise ValueError("Case note cannot be empty.")
 
         note = CaseNote(
-            case=case,
             content=content,
         )
 
@@ -134,10 +210,7 @@ class CaseService:
         case_id: int,
         priority: str,
     ) -> Case:
-        case = self.case_repository.get_by_id(case_id)
-
-        if case is None:
-            raise ValueError("Case not found.")
+        case = self.get_case(case_id)
 
         allowed_priorities = {
             "high",
@@ -149,6 +222,9 @@ class CaseService:
             raise ValueError("Invalid case priority.")
 
         previous_priority = case.priority
+
+        if previous_priority == priority:
+            return case
 
         case.priority = priority
 
@@ -174,10 +250,7 @@ class CaseService:
         case_id: int,
         status: str,
     ) -> Case:
-        case = self.case_repository.get_by_id(case_id)
-
-        if case is None:
-            raise ValueError("Case not found.")
+        case = self.get_case(case_id)
 
         allowed_statuses = {
             "open",
@@ -195,6 +268,9 @@ class CaseService:
             )
 
         previous_status = case.status
+
+        if previous_status == status:
+            return case
 
         case.status = status
 
@@ -221,10 +297,7 @@ class CaseService:
         resolution: str,
         closing_note: str,
     ) -> Case:
-        case = self.case_repository.get_by_id(case_id)
-
-        if case is None:
-            raise ValueError("Case not found.")
+        case = self.get_case(case_id)
 
         if case.status == "closed":
             raise ValueError("Case is already closed.")
@@ -239,7 +312,9 @@ class CaseService:
         if resolution not in allowed_resolutions:
             raise ValueError("Invalid case resolution.")
 
-        if not closing_note.strip():
+        closing_note = closing_note.strip()
+
+        if not closing_note:
             raise ValueError("Closing note is required.")
 
         previous_status = case.status
@@ -271,13 +346,12 @@ class CaseService:
         *,
         case_id: int,
     ) -> Case:
-        case = self.case_repository.get_by_id(case_id)
-
-        if case is None:
-            raise ValueError("Case not found.")
+        case = self.get_case(case_id)
 
         if case.status != "closed":
-            raise ValueError("Only closed cases can be reopened.")
+            raise ValueError(
+                "Only closed cases can be reopened."
+            )
 
         previous_resolution = case.resolution
         previous_closing_note = case.closing_note
@@ -308,15 +382,51 @@ class CaseService:
 
         return case
 
+    def load_linked_findings(
+        self,
+        *,
+        case_id: int,
+    ) -> list:
+        case = self.get_case(case_id)
+
+        links = sorted(
+            case.case_findings,
+            key=lambda link: (
+                link.id
+                if link.id is not None
+                else 0
+            ),
+        )
+
+        return [
+            link.finding
+            for link in links
+            if link.finding is not None
+        ]
+
+    def load_notes(
+        self,
+        *,
+        case_id: int,
+    ) -> list[CaseNote]:
+        case = self.get_case(case_id)
+
+        return sorted(
+            case.notes,
+            key=lambda note: (
+                note.created_at,
+                note.id
+                if note.id is not None
+                else 0,
+            ),
+        )
+
     def load_history(
         self,
         *,
         case_id: int,
     ) -> list[CaseActivity]:
-        case = self.case_repository.get_by_id(case_id)
-
-        if case is None:
-            raise ValueError("Case not found.")
+        self.get_case(case_id)
 
         return self.case_repository.list_activities(
             case_id

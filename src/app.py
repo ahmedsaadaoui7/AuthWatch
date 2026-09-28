@@ -13,13 +13,17 @@ from src.database import (
 )
 from src.database_migrations import upgrade_database
 
+from src.services.case_service import CaseService
 from src.services.dashboard_service import DashboardService
+from src.services.finding_service import FindingService
 from src.services.investigation_service import (
     InvestigationService,
 )
 
 from src.viewmodels.analysis_viewmodel import AnalysisViewModel
+from src.viewmodels.case_viewmodel import CaseViewModel
 from src.viewmodels.dashboard_viewmodel import DashboardViewModel
+from src.viewmodels.finding_viewmodel import FindingViewModel
 from src.viewmodels.investigation_viewmodel import (
     InvestigationViewModel,
 )
@@ -80,6 +84,24 @@ def main() -> int:
         investigation_service
     )
 
+    # Findings
+    finding_service = FindingService(
+        session
+    )
+
+    finding_viewmodel = FindingViewModel(
+        finding_service
+    )
+
+    # Cases
+    case_service = CaseService(
+        session
+    )
+
+    case_viewmodel = CaseViewModel(
+        case_service
+    )
+
     # Analysis
     #
     # AnalysisViewModel receives the session factory
@@ -106,6 +128,16 @@ def main() -> int:
     context.setContextProperty(
         "investigationViewModel",
         investigation_viewmodel,
+    )
+
+    context.setContextProperty(
+        "findingViewModel",
+        finding_viewmodel,
+    )
+
+    context.setContextProperty(
+        "caseViewModel",
+        case_viewmodel,
     )
 
     qml_engine.load(

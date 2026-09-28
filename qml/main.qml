@@ -39,8 +39,16 @@ ApplicationWindow {
             dashboardViewModel.loadDashboard()
         }
 
+        if (index === 2 && findingViewModel) {
+            findingViewModel.loadFindings()
+        }
+
         if (index === 3 && investigationViewModel) {
             investigationViewModel.loadInvestigations()
+        }
+
+        if (index === 4 && caseViewModel) {
+            caseViewModel.loadCases()
         }
     }
 
@@ -417,22 +425,19 @@ ApplicationWindow {
                     }
 
                     FindingsPage {
-                        viewModel: dashboardViewModel
+                        viewModel: findingViewModel
 
                         onOpenAnalyzeRequested:
                             root.navigate(1)
 
-                        onMarkReviewedRequested: function(finding) {
-                            globalToast.show(
-                                "Finding review action is ready for FindingViewModel wiring.",
-                                "info"
-                            )
-                        }
-
                         onEscalateRequested: function(finding) {
-                            globalToast.show(
-                                "Case escalation UI is ready for FindingViewModel/CaseService wiring.",
-                                "info"
+                            if (!finding || !caseViewModel)
+                                return
+
+                            caseViewModel.createFromFinding(
+                                finding.id,
+                                finding.title,
+                                finding.severity
                             )
                         }
                     }
@@ -445,7 +450,7 @@ ApplicationWindow {
                     }
 
                     CasesPage {
-                        viewModel: dashboardViewModel
+                        viewModel: caseViewModel
 
                         onOpenFindingWorkflowRequested:
                             root.navigate(2)
@@ -490,6 +495,8 @@ ApplicationWindow {
 
                     dashboardViewModel.loadDashboard()
 
+                    findingViewModel.loadFindings()
+
                     investigationViewModel.loadInvestigations()
                 }
             }
@@ -513,6 +520,68 @@ ApplicationWindow {
                         "Investigation exported successfully.",
                         "success"
                     )
+                }
+            }
+
+            Connections {
+                target: findingViewModel
+
+                function onErrorChanged() {
+                    if (
+                        findingViewModel.errorMessage !== ""
+                    ) {
+                        globalToast.show(
+                            findingViewModel.errorMessage,
+                            "error"
+                        )
+                    }
+                }
+
+                function onFindingUpdated() {
+                    globalToast.show(
+                        "Finding marked as reviewed.",
+                        "success"
+                    )
+
+                    dashboardViewModel.loadDashboard()
+                }
+            }
+
+            Connections {
+                target: caseViewModel
+
+                function onErrorChanged() {
+                    if (
+                        caseViewModel.errorMessage !== ""
+                    ) {
+                        globalToast.show(
+                            caseViewModel.errorMessage,
+                            "error"
+                        )
+                    }
+                }
+
+                function onCaseCreated(caseId) {
+                    globalToast.show(
+                        "Finding escalated to a new case.",
+                        "success"
+                    )
+
+                    findingViewModel.loadFindings()
+                    dashboardViewModel.loadDashboard()
+
+                    root.navigate(4)
+                    caseViewModel.selectCase(caseId)
+                }
+
+                function onCaseActionCompleted(message) {
+                    globalToast.show(
+                        message,
+                        "success"
+                    )
+
+                    findingViewModel.loadFindings()
+                    dashboardViewModel.loadDashboard()
                 }
             }
         }

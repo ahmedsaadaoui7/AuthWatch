@@ -695,3 +695,128 @@ def test_analysis_service_rolls_back_partial_analysis(
         ).all()
 
         assert investigations == []
+
+
+def test_analysis_service_links_detection_supporting_events(
+    tmp_path,
+):
+    engine = create_database_engine(
+        tmp_path / "authwatch.db"
+    )
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = create_session_factory(engine)
+
+    auth_file = tmp_path / "auth.csv"
+
+    auth_file.write_bytes(
+        b"auth telemetry"
+    )
+
+    metadata = (
+        AnalysisService._build_telemetry_metadata(
+            log_file=str(auth_file),
+        )
+    )
+
+    event_times = [
+        "2026-08-08T09:00:00",
+        "2026-08-08T09:00:12",
+        "2026-08-08T09:00:24",
+        "2026-08-08T09:00:36",
+        "2026-08-08T09:00:48",
+    ]
+
+    events = [
+        {
+            "timestamp": timestamp,
+            "username": "admin",
+            "source_ip": "10.0.0.50",
+            "result": "failure",
+        }
+        for timestamp in event_times
+    ]
+
+    result = AnalysisResult(
+        events=events,
+        detections=[
+            {
+                "rule_id": "AUTH-BF-001",
+                "title": (
+                    "Potential Brute-Force Activity"
+                ),
+                "severity": "high",
+                "first_seen": (
+                    "2026-08-08T09:00:00"
+                ),
+                "last_seen": (
+                    "2026-08-08T09:00:48"
+                ),
+                "details": {
+                    "source_ip": "10.0.0.50",
+                    "username": "admin",
+                    "failed_attempts": 5,
+                },
+                "mitre": None,
+            }
+        ],
+        correlations=[],
+        v3_mode=True,
+    )
+
+    with SessionLocal() as session:
+        service = AnalysisService(session)
+
+        investigation, event_map = (
+            service._persist_investigation_events(
+                name="Detection Evidence Test",
+                result=result,
+                telemetry_metadata=metadata,
+            )
+        )
+
+        findings = service._persist_findings(
+            investigation=investigation,
+            result=result,
+            event_map=event_map,
+        )
+
+        session.flush()
+
+        assert len(findings) == 1
+
+        finding = findings[0]
+
+        assert finding.rule_id == "AUTH-BF-001"
+
+        assert len(
+            finding.finding_events
+        ) == 5
+
+        linked_events = [
+            link.event
+            for link in finding.finding_events
+        ]
+
+        assert [
+            event.username
+            for event in linked_events
+        ] == [
+            "admin",
+            "admin",
+            "admin",
+            "admin",
+            "admin",
+        ]
+
+        assert [
+            event.source_ip
+            for event in linked_events
+        ] == [
+            "10.0.0.50",
+            "10.0.0.50",
+            "10.0.0.50",
+            "10.0.0.50",
+            "10.0.0.50",
+        ]

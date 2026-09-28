@@ -24,6 +24,7 @@ from src.analysis_engine import (
     run_analysis,
 )
 
+
 class AnalysisService:
     _TELEMETRY_SOURCE_TYPES = {
         "log_file": "auth_log",
@@ -32,13 +33,11 @@ class AnalysisService:
         "linux_auth": "linux_auth",
     }
 
-
     def __init__(self, session):
         self.session = session
         self.investigation_repository = (
             InvestigationRepository(session)
         )
-
 
     @staticmethod
     def _calculate_sha256(path: Path) -> str:
@@ -154,7 +153,6 @@ class AnalysisService:
     ) -> AnalysisResult:
         return run_analysis(request)
 
-
     @staticmethod
     def _parse_event_timestamp(event: dict) -> datetime:
         timestamp = event.get("timestamp")
@@ -172,7 +170,6 @@ class AnalysisService:
             raise ValueError(
                 f"Invalid event timestamp: {timestamp}"
             ) from error
-
 
     @staticmethod
     def _resolve_event_type(
@@ -205,7 +202,6 @@ class AnalysisService:
             )
 
         return legacy_types[result]
-
 
     def _persist_investigation_events(
         self,
@@ -383,6 +379,155 @@ class AnalysisService:
                 f"Invalid finding timestamp: {value}"
             ) from error
 
+    def _find_detection_supporting_events(
+        self,
+        *,
+        detection: dict,
+        result: AnalysisResult,
+        event_map: dict[int, Event],
+    ) -> list[Event]:
+        first_seen = self._parse_optional_timestamp(
+            detection.get("first_seen")
+        )
+
+        last_seen = self._parse_optional_timestamp(
+            detection.get("last_seen")
+        )
+
+        # V4 must not infer supporting evidence from
+        # only a broad investigation time range.
+        if first_seen is None and last_seen is None:
+            return []
+
+        rule_id = detection.get("rule_id", "")
+        details = detection.get("details") or {}
+
+        source_ip = details.get("source_ip")
+        username = details.get("username")
+
+        usernames = details.get("usernames") or []
+        source_ips = details.get("source_ips") or []
+
+        supporting_events = []
+        seen_events = set()
+
+        for event_data in result.events:
+            event_identity = id(event_data)
+
+            if event_identity in seen_events:
+                continue
+
+            event_timestamp = (
+                self._parse_event_timestamp(
+                    event_data
+                )
+            )
+
+            if (
+                first_seen is not None
+                and event_timestamp < first_seen
+            ):
+                continue
+
+            if (
+                last_seen is not None
+                and event_timestamp > last_seen
+            ):
+                continue
+
+            source_type = (
+                event_data.get("source")
+                or "auth_log"
+            )
+
+            event_type = self._resolve_event_type(
+                event_data,
+                source_type,
+            )
+
+            # The six current AUTH-* detection rules
+            # are supported only by authentication
+            # telemetry.
+            if not event_type.startswith(
+                "authentication_"
+            ):
+                continue
+
+            matches = False
+
+            if rule_id == "AUTH-BF-001":
+                matches = (
+                    event_type
+                    == "authentication_failure"
+                    and event_data.get("source_ip")
+                    == source_ip
+                    and event_data.get("username")
+                    == username
+                )
+
+            elif rule_id == "AUTH-PS-001":
+                matches = (
+                    event_type
+                    == "authentication_failure"
+                    and event_data.get("source_ip")
+                    == source_ip
+                    and event_data.get("username")
+                    in usernames
+                )
+
+            elif rule_id == "AUTH-SF-001":
+                matches = (
+                    event_data.get("source_ip")
+                    == source_ip
+                    and event_data.get("username")
+                    == username
+                )
+
+            elif rule_id == "AUTH-DA-001":
+                matches = (
+                    event_data.get("username")
+                    == username
+                )
+
+            elif rule_id == "AUTH-MA-001":
+                matches = (
+                    event_data.get("source_ip")
+                    == source_ip
+                    and event_data.get("username")
+                    in usernames
+                )
+
+            elif rule_id == "AUTH-MI-001":
+                matches = (
+                    event_data.get("username")
+                    == username
+                    and event_data.get("source_ip")
+                    in source_ips
+                )
+
+            if not matches:
+                continue
+
+            event = event_map.get(
+                event_identity
+            )
+
+            if event is None:
+                raise ValueError(
+                    "Detection references telemetry "
+                    "that was not persisted."
+                )
+
+            supporting_events.append(
+                event
+            )
+
+            seen_events.add(
+                event_identity
+            )
+
+        return supporting_events
+
     def _persist_findings(
         self,
         *,
@@ -418,6 +563,22 @@ class AnalysisService:
             )
 
             investigation.findings.append(finding)
+
+            supporting_events = (
+                self._find_detection_supporting_events(
+                    detection=detection,
+                    result=result,
+                    event_map=event_map,
+                )
+            )
+
+            for event in supporting_events:
+                finding.finding_events.append(
+                    FindingEvent(
+                        event=event,
+                    )
+                )
+
             persisted_findings.append(finding)
 
         for correlation in result.correlations:

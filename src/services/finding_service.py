@@ -42,6 +42,11 @@ class FindingService:
     ) -> Finding:
         finding = self.get_finding(finding_id)
 
+        if finding.status == "escalated":
+            raise ValueError(
+                "Escalated findings cannot be returned to reviewed status."
+            )
+
         finding.status = "reviewed"
 
         return finding
