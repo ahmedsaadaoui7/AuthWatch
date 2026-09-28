@@ -19,6 +19,50 @@ ApplicationWindow {
     property int currentPage: 0
     property date currentDateTime: new Date()
 
+    readonly property var applicationSettings:
+        settingsViewModel
+        ? settingsViewModel.settings
+        : ({})
+
+    readonly property string findingsDefaultSeverity: {
+        var value = root.applicationSettings[
+            "default_severity"
+        ]
+
+        if (value === "High")
+            return "high"
+
+        if (value === "Medium")
+            return "medium"
+
+        if (value === "Low")
+            return "low"
+
+        return "all"
+    }
+
+    readonly property bool openCompletedInvestigation:
+        root.applicationSettings[
+            "open_completed_investigation"
+        ] !== undefined
+        ? Boolean(
+              root.applicationSettings[
+                  "open_completed_investigation"
+              ]
+          )
+        : true
+
+    readonly property bool highSeverityVisualAlerts:
+        root.applicationSettings[
+            "high_severity_visual_alerts"
+        ] !== undefined
+        ? Boolean(
+              root.applicationSettings[
+                  "high_severity_visual_alerts"
+              ]
+          )
+        : true
+
     BrandTheme {
         id: theme
     }
@@ -41,6 +85,7 @@ ApplicationWindow {
 
         if (index === 2 && findingViewModel) {
             findingViewModel.loadFindings()
+            findingsPage.applyDefaultSeverity()
         }
 
         if (index === 3 && investigationViewModel) {
@@ -49,6 +94,10 @@ ApplicationWindow {
 
         if (index === 4 && caseViewModel) {
             caseViewModel.loadCases()
+        }
+
+        if (index === 5 && settingsViewModel) {
+            settingsViewModel.loadSettings()
         }
     }
 
@@ -59,6 +108,10 @@ ApplicationWindow {
 
         if (investigationViewModel) {
             investigationViewModel.loadInvestigations()
+        }
+
+        if (settingsViewModel) {
+            settingsViewModel.loadSettings()
         }
     }
 
@@ -425,7 +478,13 @@ ApplicationWindow {
                     }
 
                     FindingsPage {
+                        id: findingsPage
+
                         viewModel: findingViewModel
+                        defaultSeverity:
+                            root.findingsDefaultSeverity
+                        highSeverityVisualAlerts:
+                            root.highSeverityVisualAlerts
 
                         onOpenAnalyzeRequested:
                             root.navigate(1)
@@ -457,6 +516,7 @@ ApplicationWindow {
                     }
 
                     SettingsPage {
+                        viewModel: settingsViewModel
                     }
                 }
             }
@@ -498,6 +558,39 @@ ApplicationWindow {
                     findingViewModel.loadFindings()
 
                     investigationViewModel.loadInvestigations()
+
+                    if (
+                        root.openCompletedInvestigation
+                        && investigationViewModel.investigations
+                        && investigationViewModel.investigations.length > 0
+                    ) {
+                        var newestInvestigation = null
+
+                        for (
+                            var index = 0;
+                            index < investigationViewModel.investigations.length;
+                            ++index
+                        ) {
+                            var candidate =
+                                investigationViewModel.investigations[index]
+
+                            if (
+                                newestInvestigation === null
+                                || Number(candidate.id)
+                                   > Number(newestInvestigation.id)
+                            ) {
+                                newestInvestigation = candidate
+                            }
+                        }
+
+                        if (newestInvestigation !== null) {
+                            root.navigate(3)
+
+                            investigationViewModel.selectInvestigation(
+                                newestInvestigation.id
+                            )
+                        }
+                    }
                 }
             }
 
@@ -582,6 +675,28 @@ ApplicationWindow {
 
                     findingViewModel.loadFindings()
                     dashboardViewModel.loadDashboard()
+                }
+            }
+
+            Connections {
+                target: settingsViewModel
+
+                function onErrorChanged() {
+                    if (
+                        settingsViewModel.errorMessage !== ""
+                    ) {
+                        globalToast.show(
+                            settingsViewModel.errorMessage,
+                            "error"
+                        )
+                    }
+                }
+
+                function onSettingSaved(key) {
+                    globalToast.show(
+                        "Setting saved locally.",
+                        "success"
+                    )
                 }
             }
         }

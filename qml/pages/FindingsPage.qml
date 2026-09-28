@@ -7,7 +7,9 @@ Item {
     id: root
 
     property var viewModel: null
-    property string selectedSeverity: "all"
+    property string defaultSeverity: "all"
+    property string selectedSeverity: root.defaultSeverity
+    property bool highSeverityVisualAlerts: true
 
     readonly property var findingsModel:
         root.viewModel
@@ -32,9 +34,15 @@ Item {
     }
 
     Component.onCompleted: {
+        root.applyDefaultSeverity()
+
         if (root.viewModel) {
             root.viewModel.loadFindings()
         }
+    }
+
+    function applyDefaultSeverity() {
+        root.selectedSeverity = root.defaultSeverity
     }
 
     function matches(item) {
@@ -143,7 +151,9 @@ Item {
         }
 
         AlertBanner {
-            visible: root.highCount > 0
+            visible:
+                root.highSeverityVisualAlerts
+                && root.highCount > 0
 
             count: root.highCount
             actionText: "Show high findings"

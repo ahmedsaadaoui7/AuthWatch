@@ -19,6 +19,7 @@ from src.services.finding_service import FindingService
 from src.services.investigation_service import (
     InvestigationService,
 )
+from src.services.settings_service import SettingsService
 
 from src.viewmodels.analysis_viewmodel import AnalysisViewModel
 from src.viewmodels.case_viewmodel import CaseViewModel
@@ -27,6 +28,7 @@ from src.viewmodels.finding_viewmodel import FindingViewModel
 from src.viewmodels.investigation_viewmodel import (
     InvestigationViewModel,
 )
+from src.viewmodels.settings_viewmodel import SettingsViewModel
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -102,6 +104,15 @@ def main() -> int:
         case_service
     )
 
+    # Settings
+    settings_service = SettingsService(
+        session
+    )
+
+    settings_viewmodel = SettingsViewModel(
+        settings_service
+    )
+
     # Analysis
     #
     # AnalysisViewModel receives the session factory
@@ -138,6 +149,11 @@ def main() -> int:
     context.setContextProperty(
         "caseViewModel",
         case_viewmodel,
+    )
+
+    context.setContextProperty(
+        "settingsViewModel",
+        settings_viewmodel,
     )
 
     qml_engine.load(
