@@ -359,8 +359,11 @@ def test_investigation_viewmodel_normalizes_export_file_url():
     assert result == "/tmp/investigation.json"
 
 
-def test_investigation_viewmodel_exports_json():
+def test_investigation_viewmodel_exports_json(
+    tmp_path,
+):
     calls = []
+    output_file = tmp_path / "investigation.json"
 
     class FakeService:
         def export_investigation(
@@ -390,7 +393,7 @@ def test_investigation_viewmodel_exports_json():
 
     viewmodel.exportInvestigation(
         1,
-        "/tmp/investigation.json",
+        str(output_file),
     )
 
     assert viewmodel.errorMessage == ""
@@ -398,13 +401,11 @@ def test_investigation_viewmodel_exports_json():
     assert calls == [{
         "investigation_id": 1,
         "export_format": "json",
-        "output_path": Path(
-            "/tmp/investigation.json"
-        ),
+        "output_path": output_file,
     }]
 
     assert completed == [
-        "/tmp/investigation.json"
+        str(output_file)
     ]
 
 

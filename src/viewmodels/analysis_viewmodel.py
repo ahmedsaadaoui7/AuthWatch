@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import os
 from typing import Any
 
 from PySide6.QtCore import (
@@ -177,7 +178,7 @@ class AnalysisViewModel(QObject):
             local_path = url.toLocalFile()
 
             if local_path:
-                return local_path
+                return os.path.normpath(local_path)
 
         return text
 
