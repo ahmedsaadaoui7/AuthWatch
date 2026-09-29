@@ -54,7 +54,7 @@ The V4 desktop application includes:
 - Persistent application settings for supported V4 behavior
 - Safe analysis-worker lifecycle and shutdown handling
 
-V4 is currently in final release validation. The complete automated suite passes on Kali Linux; Windows V4 compatibility validation is the remaining platform gate before release.
+V4 release validation is complete on both Kali Linux and Windows. The complete automated suite passes on both platforms, and the desktop analysis, evidence, export, case-management, and persistent-settings workflows have been smoke-tested cross-platform.
 
 ---
 
@@ -1024,7 +1024,7 @@ Windows Security EVTX, Sysmon EVTX, Linux authentication logs, cross-source norm
 
 A local SOC investigation workspace built on the V3 engine, including dashboard metrics, telemetry analysis, persistent investigations, visual findings/evidence review, timelines, filtering, investigation export, analyst notes, case-management workflows, and persistent application settings.
 
-**Status:** Release candidate. Implementation and the 428-test Kali validation suite are complete. Final Windows V4 compatibility validation remains before the `v4.0.0` release.
+**Status:** Complete and released as `v4.0.0`. The 428-test suite passes on Kali Linux and Windows, and the V4 desktop workflow has completed cross-platform smoke validation.
 
 ### V5 — Secure Multi-User SOC Application
 
@@ -1046,15 +1046,16 @@ See the `LICENSE` file for licensing information.
 
 **AuthWatch V4 — Local SOC Dashboard + Case Management**
 
-V4 implementation and automated validation are complete on Kali Linux.
+V4 implementation, documentation, and release validation are complete on Kali Linux and Windows.
 
 Current validation status:
 
 ```text
 Automated test suite             428/428 passing on Kali Linux
+Automated test suite             428/428 passing on Windows
 V3 scenario dataset suite        Complete
 V3 CLI compatibility             Passing
-V4 desktop launch                Passing on Kali Linux
+V4 desktop launch                Passing on Kali Linux and Windows
 Dashboard workflow               Passing
 Analysis persistence             Passing
 Investigation timeline/context   Passing
@@ -1063,8 +1064,8 @@ Case management workflow         Passing
 Persistent settings              Passing
 Investigation export             Passing
 Repository diff check            Passing
-Windows V4 validation            Pending
-Documentation review             In progress
+Windows V4 validation            Passing
+Documentation review             Complete
 ```
 
-The V4 feature set is implemented and locally validated. The remaining release gates are final documentation review and Windows desktop compatibility validation before tagging `v4.0.0`.
+The V4 feature set, documentation, automated validation, and Kali/Windows desktop smoke validation are complete. AuthWatch V4 is released as `v4.0.0`.

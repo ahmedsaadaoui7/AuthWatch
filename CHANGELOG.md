@@ -2,7 +2,7 @@
 
 All notable changes to AuthWatch are documented in this file.
 
-## [Unreleased]
+## [4.0.0] - 2026-09-29
 
 ### Added
 
@@ -45,9 +45,11 @@ All notable changes to AuthWatch are documented in this file.
 ### Validation
 
 - Complete automated suite: 428 tests passing on Kali Linux
+- Complete automated suite: 428 tests passing on Windows with Python 3.12
 - `git diff --check` passing
 - V4 Dashboard, Analyze, Findings, Investigations, Cases, Settings, evidence, export, close/reopen, and persistence workflows manually smoke-tested on Kali Linux
-- Windows V4 desktop compatibility validation pending before release
+- Windows desktop smoke validation completed for CSV analysis, supporting evidence, JSON export, finding-to-case escalation, case workflow, and persistent settings
+- Cross-platform QML file-URL normalization and export path handling validated on Kali Linux and Windows
 
 ## [3.0.0] - 2026-09-09
 
