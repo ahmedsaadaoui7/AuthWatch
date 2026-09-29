@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import main as authwatch_main
+import src.analysis_engine as analysis_engine
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -1040,13 +1041,13 @@ def test_cli_processes_windows_security_events(
     ]
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_windows_security_events",
         lambda file_path: windows_events,
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_windows_security_event",
         lambda event: event,
     )
@@ -1118,13 +1119,13 @@ def test_cli_processes_sysmon_events(
     received = {}
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [raw_event],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_sysmon_event",
         lambda event: normalized_event,
     )
@@ -1138,7 +1139,7 @@ def test_cli_processes_sysmon_events(
         return []
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         fake_run_detection_engine,
     )
@@ -1247,7 +1248,7 @@ def test_cli_processes_linux_auth_events(
     received = {}
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_linux_auth_events",
         lambda file_path: [raw_event],
     )
@@ -1263,7 +1264,7 @@ def test_cli_processes_linux_auth_events(
         return normalized_event
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_linux_auth_event",
         fake_normalize_linux_auth_event,
     )
@@ -1277,7 +1278,7 @@ def test_cli_processes_linux_auth_events(
         return []
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         fake_run_detection_engine,
     )
@@ -1339,25 +1340,25 @@ def test_cli_keeps_correlation_when_no_detections(
     }
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [normalized_event],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_sysmon_event",
         lambda event: event,
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         lambda events: [correlation],
     )
@@ -1409,25 +1410,25 @@ def test_cli_applies_mitre_mappings_to_results(
     received = []
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [alert],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         lambda events: [correlation],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "attach_timelines_to_correlations",
         lambda correlations: correlations,
     )
@@ -1437,7 +1438,7 @@ def test_cli_applies_mitre_mappings_to_results(
         return results
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "attach_mitre_mappings",
         fake_attach_mitre_mappings,
     )
@@ -1481,19 +1482,19 @@ def test_cli_generates_v3_markdown_report(
     }
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         lambda events: [correlation],
     )
@@ -1542,19 +1543,19 @@ def test_cli_generates_v3_json_report(
     }
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         lambda events: [correlation],
     )
@@ -1597,19 +1598,19 @@ def test_cli_generates_empty_v3_reports(
     json_file = tmp_path / "investigation.json"
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         lambda events: [],
     )
@@ -1705,13 +1706,13 @@ def test_cli_uses_custom_correlation_config(
     received = {}
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_detection_engine",
         lambda events, disabled_accounts=None, config=None: [],
     )
@@ -1724,7 +1725,7 @@ def test_cli_uses_custom_correlation_config(
         return []
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "run_correlation_engine",
         fake_run_correlation_engine,
     )
@@ -1781,25 +1782,25 @@ def test_cli_correlates_windows_authentication_with_sysmon_process(
     }
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_windows_security_events",
         lambda file_path: [windows_event],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_windows_security_event",
         lambda event: event,
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "load_sysmon_events",
         lambda file_path: [sysmon_event],
     )
 
     monkeypatch.setattr(
-        authwatch_main,
+        analysis_engine,
         "normalize_sysmon_event",
         lambda event: event,
     )
@@ -1831,3 +1832,69 @@ def test_cli_correlates_windows_authentication_with_sysmon_process(
         "Correlation ID: CORR-AUTH-EXEC-001"
         in captured.out
     )
+
+
+def test_build_analysis_request_maps_cli_arguments():
+    from argparse import Namespace
+
+    from main import build_analysis_request
+
+    args = Namespace(
+        log_file="auth.csv",
+        windows_security="Security.evtx",
+        sysmon="Sysmon.evtx",
+        linux_auth="auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+        disabled_accounts="disabled.txt",
+        config="detection.json",
+        correlation_config="correlation.json",
+    )
+
+    request = build_analysis_request(args)
+
+    assert request.log_file == "auth.csv"
+    assert request.windows_security == "Security.evtx"
+    assert request.sysmon == "Sysmon.evtx"
+    assert request.linux_auth == "auth.log"
+    assert request.linux_year == 2026
+    assert request.linux_utc_offset == "+01:00"
+    assert request.disabled_accounts == "disabled.txt"
+    assert request.detection_config == "detection.json"
+    assert request.correlation_config == "correlation.json"
+
+
+def test_analyze_from_cli_args_delegates_to_engine(monkeypatch):
+    from argparse import Namespace
+
+    import main
+
+    args = Namespace(
+        log_file="auth.csv",
+        windows_security=None,
+        sysmon=None,
+        linux_auth=None,
+        linux_year=None,
+        linux_utc_offset=None,
+        disabled_accounts=None,
+        config=None,
+        correlation_config=None,
+    )
+
+    expected_result = object()
+    captured = {}
+
+    def fake_run_analysis(request):
+        captured["request"] = request
+        return expected_result
+
+    monkeypatch.setattr(
+        main,
+        "run_analysis",
+        fake_run_analysis,
+    )
+
+    result = main.analyze_from_cli_args(args)
+
+    assert result is expected_result
+    assert captured["request"].log_file == "auth.csv"

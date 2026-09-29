@@ -1,31 +1,18 @@
 import argparse
 import sys
 
-from src.config import (
-    load_correlation_config,
-    load_detection_config,
+from src.analysis_engine import (
+    AnalysisError,
+    AnalysisRequest,
+    run_analysis,
 )
-from src.detector import run_detection_engine
 from src.formatter import format_alert_details
-from src.parser import load_auth_events, load_disabled_accounts
 from src.reporter import (
     generate_investigation_json_report,
     generate_investigation_markdown_report,
     generate_json_report,
     generate_markdown_report,
 )
-from src.normalizer import (
-    normalize_linux_auth_event,
-    normalize_sysmon_event,
-    normalize_windows_security_event,
-)
-from src.parsers.windows_security import load_windows_security_events
-from src.parsers.sysmon import load_sysmon_events
-from src.parsers.linux_auth import load_linux_auth_events
-from src.correlation import run_correlation_engine
-from src.timeline import attach_timelines_to_correlations
-from src.mitre import attach_mitre_mappings
-
 
 
 def parse_arguments():
@@ -126,233 +113,50 @@ def parse_arguments():
     return args
 
 
+def build_analysis_request(args):
+    return AnalysisRequest(
+        log_file=args.log_file,
+        windows_security=args.windows_security,
+        sysmon=args.sysmon,
+        linux_auth=args.linux_auth,
+        linux_year=args.linux_year,
+        linux_utc_offset=args.linux_utc_offset,
+        disabled_accounts=args.disabled_accounts,
+        detection_config=args.config,
+        correlation_config=args.correlation_config,
+    )
+
+
+def analyze_from_cli_args(args):
+    request = build_analysis_request(args)
+    return run_analysis(request)
+
+
+def format_cli_analysis_error(error):
+    if error.code == "DETECTION_CONFIG_NOT_FOUND":
+        return (
+            "Configuration file not found: "
+            f"{error.path}"
+        )
+
+    return str(error)
+
+
 def main():
     args = parse_arguments()
 
-    v3_mode = any([
-        args.windows_security,
-        args.sysmon,
-        args.linux_auth,
-    ])
-
-    events = []
-
-    if args.log_file:
-        try:
-            auth_events = load_auth_events(
-                args.log_file
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Authentication log not found: "
-                f"{args.log_file}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid authentication log: {error}",
-                file=sys.stderr,
-            )
-            return 1
-
-        events.extend(auth_events)
-
-    if args.windows_security:
-        try:
-            windows_events = load_windows_security_events(
-                args.windows_security
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Windows Security EVTX not found: "
-                f"{args.windows_security}",
-                file=sys.stderr,
-            )
-            return 1
-
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid Windows Security telemetry: "
-                f"{error}",
-                file=sys.stderr,
-            )
-            return 1
-
-        normalized_windows_events = [
-            normalize_windows_security_event(event)
-            for event in windows_events
-        ]
-
-        events.extend(normalized_windows_events)
-
-    if args.sysmon:
-        try:
-            sysmon_events = load_sysmon_events(
-                args.sysmon
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Sysmon EVTX not found: "
-                f"{args.sysmon}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid Sysmon telemetry: "
-                f"{error}",
-                file=sys.stderr,
-            )
-            return 1
-
-        normalized_sysmon_events = [
-            normalize_sysmon_event(event)
-            for event in sysmon_events
-        ]
-
-        events.extend(normalized_sysmon_events)
-
-    if args.linux_auth:
-        try:
-            linux_events = load_linux_auth_events(
-                args.linux_auth
-            )
-
-            normalized_linux_events = [
-                normalize_linux_auth_event(
-                    event,
-                    year=args.linux_year,
-                    utc_offset=args.linux_utc_offset,
-                )
-                for event in linux_events
-            ]
-
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Linux authentication log not found: "
-                f"{args.linux_auth}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid Linux authentication telemetry: "
-                f"{error}",
-                file=sys.stderr,
-            )
-            return 1
-
-        events.extend(normalized_linux_events)
-
-    disabled_accounts = None
-
-    if args.disabled_accounts:
-        try:
-            disabled_accounts = load_disabled_accounts(
-                args.disabled_accounts
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Disabled accounts file not found: "
-                f"{args.disabled_accounts}",
-                file=sys.stderr,
-            )
-            return 1
-
-    detection_config = None
-
-    if args.config:
-        try:
-            detection_config = load_detection_config(args.config)
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Configuration file not found: {args.config}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid detection configuration: {error}",
-                file=sys.stderr,
-            )
-            return 1
-
-    detection_config = None
-
-    if args.config:
-        try:
-            detection_config = load_detection_config(
-                args.config
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Configuration file not found: "
-                f"{args.config}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid detection configuration: "
-                f"{error}",
-                file=sys.stderr,
-            )
-            return 1
-
-
-    correlation_config = None
-
-    if args.correlation_config:
-        try:
-            correlation_config = load_correlation_config(
-                args.correlation_config
-            )
-        except FileNotFoundError:
-            print(
-                f"[ERROR] Correlation configuration file not found: "
-                f"{args.correlation_config}",
-                file=sys.stderr,
-            )
-            return 1
-        except ValueError as error:
-            print(
-                f"[ERROR] Invalid correlation configuration: "
-                f"{error}",
-                file=sys.stderr,
-            )
-            return 1
-
-
-    alerts = run_detection_engine(
-        events,
-        disabled_accounts=disabled_accounts,
-        config=detection_config,
-    )
-
-    alerts = run_detection_engine(
-        events,
-        disabled_accounts=disabled_accounts,
-        config=detection_config,
-    )
-
-    if correlation_config is None:
-        correlations = run_correlation_engine(events)
-    else:
-        correlations = run_correlation_engine(
-            events,
-            config=correlation_config,
+    try:
+        result = analyze_from_cli_args(args)
+    except AnalysisError as error:
+        print(
+            f"[ERROR] {format_cli_analysis_error(error)}",
+            file=sys.stderr,
         )
+        return 1
 
-    correlations = attach_timelines_to_correlations(
-        correlations
-    )
-
-    alerts = attach_mitre_mappings(alerts)
-
-    correlations = attach_mitre_mappings(
-        correlations
-    )
+    alerts = result.detections
+    correlations = result.correlations
+    v3_mode = result.v3_mode
 
     if not alerts and not correlations:
         if v3_mode:

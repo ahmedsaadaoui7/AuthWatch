@@ -1,0 +1,564 @@
+import src.analysis_engine as analysis_engine
+
+import pytest
+from src.analysis_engine import (
+    AnalysisError,
+    AnalysisRequest,
+    AnalysisResult,
+    run_analysis,
+)
+
+
+def test_analysis_request_defaults():
+    request = AnalysisRequest()
+
+    assert request.log_file is None
+    assert request.windows_security is None
+    assert request.sysmon is None
+    assert request.linux_auth is None
+    assert request.linux_year is None
+    assert request.linux_utc_offset is None
+    assert request.disabled_accounts is None
+    assert request.detection_config is None
+    assert request.correlation_config is None
+
+
+def test_analysis_result_defaults():
+    result = AnalysisResult()
+
+    assert result.events == []
+    assert result.detections == []
+    assert result.correlations == []
+    assert result.v3_mode is False
+
+
+def test_run_analysis_detects_v2_brute_force():
+    request = AnalysisRequest(
+        log_file="data/brute_force_auth_log.csv"
+    )
+
+    result = run_analysis(request)
+
+    assert result.v3_mode is False
+    assert any(
+        detection["rule_id"] == "AUTH-BF-001"
+        for detection in result.detections
+    )
+    assert result.correlations == []
+
+
+def test_run_analysis_processes_windows_security(monkeypatch):
+    raw_event = {"raw": "windows-event"}
+
+    normalized_event = {
+        "timestamp": "2026-09-18T10:00:00Z",
+        "source": "windows_security",
+        "event_id": "4624",
+        "event_type": "authentication_success",
+        "host": "WIN-CLIENT01",
+        "username": "alice",
+        "session_id": "0x1234",
+        "source_ip": "10.0.0.50",
+        "destination_ip": None,
+        "process_name": None,
+        "process_id": None,
+        "process_guid": None,
+        "parent_process_name": None,
+        "command_line": None,
+        "result": "success",
+        "details": {},
+    }
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_windows_security_events",
+        lambda path: [raw_event],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "normalize_windows_security_event",
+        lambda event: normalized_event,
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    request = AnalysisRequest(
+        windows_security="Security.evtx"
+    )
+
+    result = run_analysis(request)
+
+    assert result.v3_mode is True
+    assert result.events == [normalized_event]
+    assert result.detections == []
+
+
+def test_run_analysis_processes_sysmon(monkeypatch):
+    raw_event = {"raw": "sysmon-event"}
+
+    normalized_event = {
+        "timestamp": "2026-09-18T10:01:00Z",
+        "source": "sysmon",
+        "event_id": "1",
+        "event_type": "process_creation",
+        "host": "WIN-CLIENT01",
+        "username": "alice",
+        "session_id": "0x1234",
+        "source_ip": None,
+        "destination_ip": None,
+        "process_name": "powershell.exe",
+        "process_id": "4820",
+        "process_guid": "{ABC-123}",
+        "parent_process_name": "explorer.exe",
+        "command_line": "powershell.exe",
+        "result": None,
+        "details": {},
+    }
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_sysmon_events",
+        lambda path: [raw_event],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "normalize_sysmon_event",
+        lambda event: normalized_event,
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    request = AnalysisRequest(
+        sysmon="Sysmon.evtx"
+    )
+
+    result = run_analysis(request)
+
+    assert result.v3_mode is True
+    assert result.events == [normalized_event]
+    assert result.detections == []
+
+
+def test_run_analysis_processes_linux_auth(monkeypatch):
+    raw_event = {"raw": "linux-auth-event"}
+
+    normalized_event = {
+        "timestamp": "2026-09-18T19:00:00Z",
+        "source": "linux_auth",
+        "event_id": None,
+        "event_type": "authentication_success",
+        "host": "kali",
+        "username": "alice",
+        "session_id": None,
+        "source_ip": "10.0.0.120",
+        "destination_ip": None,
+        "process_name": None,
+        "process_id": None,
+        "process_guid": None,
+        "parent_process_name": None,
+        "command_line": None,
+        "result": "success",
+        "details": {},
+    }
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_linux_auth_events",
+        lambda path: [raw_event],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "normalize_linux_auth_event",
+        lambda event, year, utc_offset: normalized_event,
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [],
+    )
+
+    request = AnalysisRequest(
+        linux_auth="auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+    )
+
+    result = run_analysis(request)
+
+    assert result.v3_mode is True
+    assert result.events == [normalized_event]
+    assert result.detections == []
+
+
+def test_run_analysis_applies_correlation_timeline_and_mitre(
+    monkeypatch,
+):
+    raw_event = {"raw": "windows-event"}
+
+    normalized_event = {
+        "timestamp": "2026-09-18T10:00:00Z",
+        "source": "windows_security",
+        "event_id": "4624",
+        "event_type": "authentication_success",
+        "host": "WIN-CLIENT01",
+        "username": "alice",
+        "session_id": "0x1234",
+        "source_ip": "10.0.0.50",
+        "destination_ip": None,
+        "process_name": None,
+        "process_id": None,
+        "process_guid": None,
+        "parent_process_name": None,
+        "command_line": None,
+        "result": "success",
+        "details": {},
+    }
+
+    detection = {
+        "rule_id": "AUTH-BF-001",
+        "title": "Potential Brute-Force Activity",
+        "severity": "high",
+        "first_seen": "2026-09-18T10:00:00Z",
+        "last_seen": "2026-09-18T10:00:00Z",
+        "details": {},
+    }
+
+    correlation = {
+        "correlation_id": "CORR-AUTH-EXEC-001",
+        "title": "Authentication to Process Activity",
+        "severity": "medium",
+        "first_seen": "2026-09-18T10:00:00Z",
+        "last_seen": "2026-09-18T10:00:20Z",
+        "details": {},
+    }
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_windows_security_events",
+        lambda path: [raw_event],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "normalize_windows_security_event",
+        lambda event: normalized_event,
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "run_detection_engine",
+        lambda events, disabled_accounts=None, config=None: [
+            detection
+        ],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "run_correlation_engine",
+        lambda events, config=None: [correlation],
+    )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "attach_timelines_to_correlations",
+        lambda correlations: [
+            {
+                **correlations[0],
+                "timeline": ["event-1", "event-2"],
+            }
+        ],
+    )
+
+    def fake_attach_mitre_mappings(items):
+        return [
+            {
+                **item,
+                "mitre_processed": True,
+            }
+            for item in items
+        ]
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "attach_mitre_mappings",
+        fake_attach_mitre_mappings,
+    )
+
+    request = AnalysisRequest(
+        windows_security="Security.evtx"
+    )
+
+    result = run_analysis(request)
+
+    assert result.v3_mode is True
+
+    assert result.detections[0]["mitre_processed"] is True
+
+    assert result.correlations[0]["timeline"] == [
+        "event-1",
+        "event-2",
+    ]
+
+    assert result.correlations[0]["mitre_processed"] is True
+
+
+def test_run_analysis_wraps_missing_auth_log():
+    request = AnalysisRequest(
+        log_file="missing-auth-log.csv"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "AUTH_LOG_NOT_FOUND"
+    assert error.path == "missing-auth-log.csv"
+
+
+def test_run_analysis_wraps_missing_windows_security():
+    request = AnalysisRequest(
+        windows_security="missing-security.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "WINDOWS_SECURITY_NOT_FOUND"
+    assert error.path == "missing-security.evtx"
+
+
+def test_run_analysis_wraps_missing_sysmon():
+    request = AnalysisRequest(
+        sysmon="missing-sysmon.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "SYSMON_NOT_FOUND"
+    assert error.path == "missing-sysmon.evtx"
+
+
+def test_run_analysis_wraps_missing_linux_auth():
+    request = AnalysisRequest(
+        linux_auth="missing-auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "LINUX_AUTH_NOT_FOUND"
+    assert error.path == "missing-auth.log"
+
+
+def test_run_analysis_wraps_missing_detection_config():
+    request = AnalysisRequest(
+        detection_config="missing-detection-config.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "DETECTION_CONFIG_NOT_FOUND"
+    assert error.path == "missing-detection-config.json"
+
+
+def test_run_analysis_wraps_missing_correlation_config():
+    request = AnalysisRequest(
+        correlation_config="missing-correlation-config.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "CORRELATION_CONFIG_NOT_FOUND"
+    assert error.path == "missing-correlation-config.json"
+
+
+def test_run_analysis_requires_linux_context(monkeypatch):
+    def fail_if_called(path):
+        pytest.fail(
+            "Linux parser should not run when context is missing"
+        )
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_linux_auth_events",
+        fail_if_called,
+    )
+
+    request = AnalysisRequest(
+        linux_auth="auth.log"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "LINUX_CONTEXT_REQUIRED"
+    assert error.path == "auth.log"
+
+
+def test_run_analysis_wraps_missing_disabled_accounts():
+    request = AnalysisRequest(
+        disabled_accounts="missing-disabled-accounts.txt"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "DISABLED_ACCOUNTS_NOT_FOUND"
+    assert error.path == "missing-disabled-accounts.txt"
+
+
+def test_run_analysis_wraps_invalid_auth_log(monkeypatch):
+    def raise_invalid_log(path):
+        raise ValueError("invalid authentication log structure")
+
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_auth_events",
+        raise_invalid_log,
+    )
+
+    request = AnalysisRequest(
+        log_file="auth.csv"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    error = exc_info.value
+
+    assert error.code == "AUTH_LOG_INVALID"
+    assert error.path == "auth.csv"
+
+
+def test_run_analysis_wraps_invalid_windows_security(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_windows_security_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Windows telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        windows_security="Security.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "WINDOWS_SECURITY_INVALID"
+    assert exc_info.value.path == "Security.evtx"
+
+
+def test_run_analysis_wraps_invalid_sysmon(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_sysmon_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Sysmon telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        sysmon="Sysmon.evtx"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "SYSMON_INVALID"
+    assert exc_info.value.path == "Sysmon.evtx"
+
+
+def test_run_analysis_wraps_invalid_linux_auth(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_linux_auth_events",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid Linux telemetry")
+        ),
+    )
+
+    request = AnalysisRequest(
+        linux_auth="auth.log",
+        linux_year=2026,
+        linux_utc_offset="+01:00",
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "LINUX_AUTH_INVALID"
+    assert exc_info.value.path == "auth.log"
+
+
+def test_run_analysis_wraps_invalid_detection_config(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_detection_config",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid detection config")
+        ),
+    )
+
+    request = AnalysisRequest(
+        detection_config="detection.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "DETECTION_CONFIG_INVALID"
+    assert exc_info.value.path == "detection.json"
+
+
+def test_run_analysis_wraps_invalid_correlation_config(monkeypatch):
+    monkeypatch.setattr(
+        analysis_engine,
+        "load_correlation_config",
+        lambda path: (_ for _ in ()).throw(
+            ValueError("invalid correlation config")
+        ),
+    )
+
+    request = AnalysisRequest(
+        correlation_config="correlation.json"
+    )
+
+    with pytest.raises(AnalysisError) as exc_info:
+        run_analysis(request)
+
+    assert exc_info.value.code == "CORRELATION_CONFIG_INVALID"
+    assert exc_info.value.path == "correlation.json"

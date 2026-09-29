@@ -1091,3 +1091,67 @@ def test_generate_investigation_markdown_report_omits_missing_event_id(
         "2026-09-08T19:01:00Z | "
         "linux_auth | sudo_execution | kali"
     ) in content
+
+
+def test_generate_investigation_json_report_uses_explicit_events(
+    tmp_path,
+):
+    event = {
+        "timestamp": "2026-08-08T09:00:00",
+        "source": "auth_log",
+        "event_id": None,
+        "event_type": "authentication_failure",
+        "host": None,
+        "username": "admin",
+        "session_id": None,
+        "source_ip": "10.0.0.50",
+        "destination_ip": None,
+        "process_name": None,
+        "process_id": None,
+        "process_guid": None,
+        "parent_process_name": None,
+        "command_line": None,
+        "result": "failure",
+        "details": {},
+    }
+
+    output_path = (
+        tmp_path / "investigation.json"
+    )
+
+    result_path = (
+        generate_investigation_json_report(
+            [],
+            [],
+            output_path,
+            events=[event],
+        )
+    )
+
+    report = json.loads(
+        result_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert len(report["timeline"]) == 1
+
+    assert (
+        report["timeline"][0]["event_type"]
+        == "authentication_failure"
+    )
+
+    assert (
+        report["timeline"][0]["username"]
+        == "admin"
+    )
+
+    assert (
+        report["timeline"][0]["source_ip"]
+        == "10.0.0.50"
+    )
+
+    assert report["timeline"][0]["description"] == (
+        "Failed authentication for admin to "
+        "unknown host from 10.0.0.50"
+    )
